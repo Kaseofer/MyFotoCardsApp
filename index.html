@@ -171,7 +171,8 @@ canvas#preview.grab{touch-action:none}
         <button class="btn" id="sortBtn">Ordenar todo por fecha</button>
       </div>
       <div class="group"><span class="glabel">Hoja</span><div class="seg" id="paperSeg"></div></div>
-      <div class="group"><span class="glabel">Orientación</span><div class="seg" id="orientSeg"></div></div>
+      <div class="group"><span class="glabel">Orientación de esta hoja</span><div class="seg" id="orientSeg"></div>
+        <p class="hint"><span id="orientHint"></span> <button class="linkbtn" id="orientAll" hidden>Aplicar a todas las hojas</button></p></div>
       <div class="group"><span class="glabel">Fotos por hoja</span><div class="seg" id="layoutSeg"></div></div>
       <div class="group"><span class="glabel">O un tamaño fijo de foto (cm)</span><div class="seg" id="sizeSeg"></div>
         <p class="hint">Entran las que quepan en la hoja, en tamaño real.</p></div>
@@ -291,9 +292,11 @@ const ALL_LAYOUTS = [...LAYOUTS, ...SIZES];
 const SHAPES = [{id:"auto", label:"Automática"}, {id:"h", label:"Apaisadas"}, {id:"v", label:"Verticales"}];
 const AUTOCAP = [{id:"year", label:"Año"}, {id:"place", label:"Lugar"}, {id:"both", label:"Lugar y año"}];
 const LOW_DPI = 150; // por debajo de esto la foto impresa se puede ver pixelada
-function paper(){
-  const p = PAPERS.find(p => p.id === state.paper) || PAPERS[0];
-  return state.orient === "h" ? {w:p.h, h:p.w} : {w:p.w, h:p.h};
+// Cada hoja tiene su propia orientación (state.orients[p]); state.orient es la que toman las hojas nuevas
+function orientOf(p = state.page){ return state.orients[p] || state.orient; }
+function paper(p = state.page){
+  const k = PAPERS.find(k => k.id === state.paper) || PAPERS[0];
+  return orientOf(p) === "h" ? {w:k.h, h:k.w} : {w:k.w, h:k.h};
 }
 const STYLES = [{id:"polaroid", label:"Polaroid"}, {id:"borde", label:"Borde fino"}, {id:"completa", label:"Sin marco"}];
 const BGS = [{id:"#ffffff", label:"Blanco"}, {id:"#ececec", label:"Gris claro"}];
@@ -302,20 +305,20 @@ const POS = [
   {id:"tr", label:"Arriba derecha"}, {id:"tl", label:"Arriba izquierda"}, {id:"marco", label:"En el marco"}
 ];
 const state = {paper:"a4", orient:"v", layout:"12", shape:"auto", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br", capAuto:"year",
-  slots:[], pages:1, page:0, sel:-1, moving:-1, flash:[]};
+  orients:["v"], slots:[], pages:1, page:0, sel:-1, moving:-1, flash:[]};
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- deshacer ---------- */
 const undoStack = [];
 function pushUndo(){
-  undoStack.push({slots: state.slots.map(sl => sl && {...sl}), pages: state.pages, page: state.page});
+  undoStack.push({slots: state.slots.map(sl => sl && {...sl}), pages: state.pages, page: state.page, orients: [...state.orients]});
   if (undoStack.length > 40) undoStack.shift();
   document.getElementById("undoBtn").disabled = false;
 }
 function undo(){
   const u = undoStack.pop();
   if (!u){ say("No hay nada para deshacer."); return; }
-  state.slots = u.slots; state.pages = u.pages; fitPages();
+  state.slots = u.slots; state.pages = u.pages; state.orients = u.orients; fitPages();
   state.page = Math.min(u.page, state.pages-1); state.sel = -1; state.moving = -1;
   updateToolbar(); draw(); say("Listo, se deshizo el último cambio.");
 }
@@ -325,16 +328,25 @@ const $ = id => document.getElementById(id);
 const preview = $("preview"), pctx = preview.getContext("2d");
 
 /* ---------- datos ---------- */
-const perPage = () => { const g = grid(); return g.c*g.r; };
+// Las fotos están en una sola lista; cada hoja ocupa un tramo que empieza en pageStart(p)
+const perPage = (p = state.page) => { const g = grid(p); return g.c*g.r; };
 const slot = i => state.slots[i] || null;
+function pageStart(p){ let i = 0; for (let q = 0; q < p; q++) i += perPage(q); return i; }
+function pageOf(gi){ let i = 0; for (let q = 0; ; q++){ const n = perPage(q); if (gi < i + n || q > 9999) return q; i += n; } }
 function lastFilled(){ for (let i = state.slots.length-1; i >= 0; i--) if (state.slots[i]) return i; return -1; }
-function fitPages(){ state.pages = Math.max(state.pages, Math.ceil((lastFilled()+1)/perPage()), 1); }
-function countOn(p){ const n = perPage(); let k = 0; for (let i = p*n; i < (p+1)*n; i++) if (slot(i)) k++; return k; }
+function fitPages(){
+  const need = lastFilled() + 1;
+  let pages = Math.max(1, state.pages), cap = 0;
+  for (let q = 0; q < pages; q++){ if (!state.orients[q]) state.orients[q] = state.orients[q-1] || state.orient; cap += perPage(q); }
+  while (cap < need){ state.orients[pages] = state.orients[pages] || state.orients[pages-1] || state.orient; cap += perPage(pages); pages++; }
+  state.pages = pages; state.orients.length = pages;
+}
+function countOn(p){ const a = pageStart(p), n = perPage(p); let k = 0; for (let i = a; i < a+n; i++) if (slot(i)) k++; return k; }
 
 /* ---------- geometría ---------- */
 // Devuelve columnas, filas, medida de cada espacio y desde dónde empieza (centrado)
-function grid(){
-  const P = paper(), m = state.margin, g = state.gap;
+function grid(p = state.page){
+  const P = paper(p), m = state.margin, g = state.gap;
   const L = ALL_LAYOUTS.find(l => l.id === state.layout) || LAYOUTS[2];
   const AW = P.w - 2*m, AH = P.h - 2*m;
   if (!L.fw){
@@ -377,8 +389,8 @@ function cellAspect(R){
   if (state.style === "borde") return R >= 1 ? 0.93*R + 0.07 : 1 / (0.93/R + 0.07);
   return R;
 }
-function cells(){
-  const G = grid(), g = state.gap, out = [];
+function cells(p = state.page){
+  const G = grid(p), g = state.gap, out = [];
   for (let j=0;j<G.r;j++) for (let i=0;i<G.c;i++) out.push({x:G.x0 + i*(G.w+g), y:G.y0 + j*(G.h+g), w:G.w, h:G.h});
   return out;
 }
@@ -398,8 +410,8 @@ function geom(sl, pr, s){
 // Puntos por pulgada con los que va a salir impresa la foto (según su espacio y el zoom)
 function dpiOf(sl, cell){ return 25.4 / geom(sl, photoRect(cell), 1).sc; }
 function lowResOn(p){
-  const n = perPage(), cs = cells(); let k = 0;
-  cs.forEach((cell, li) => { const sl = slot(p*n + li); if (sl && dpiOf(sl, cell) < LOW_DPI) k++; });
+  const a = pageStart(p), cs = cells(p); let k = 0;
+  cs.forEach((cell, li) => { const sl = slot(a + li); if (sl && dpiOf(sl, cell) < LOW_DPI) k++; });
   return k;
 }
 
@@ -409,7 +421,7 @@ function lowResOn(p){
    cientos de fotos no agota la memoria del teléfono. */
 const FULL = 1600, THUMB = 360;
 const fullCache = new Map(), fullLoading = new Set();
-function pageSlots(p){ const n = perPage(), out = []; for (let i = p*n; i < (p+1)*n; i++){ const sl = slot(i); if (sl) out.push(sl); } return out; }
+function pageSlots(p){ const a = pageStart(p), n = perPage(p), out = []; for (let i = a; i < a+n; i++){ const sl = slot(i); if (sl) out.push(sl); } return out; }
 async function makeThumb(src){
   const k = Math.min(1, THUMB / Math.max(src.width, src.height));
   const c = document.createElement("canvas");
@@ -447,11 +459,11 @@ function releaseImages(){
 /* ---------- dibujo ---------- */
 // hi: Map opcional id → imagen completa (para exportar)
 function render(ctx, s, page, ui, hi){
-  const n = perPage(), cs = cells(), P = paper();
+  const a = pageStart(page), cs = cells(page), P = paper(page);
   ctx.save();
   ctx.fillStyle = state.bg; ctx.fillRect(0,0,P.w*s,P.h*s);
   cs.forEach((cell, li) => {
-    const gi = page*n + li, sl = slot(gi), pr = photoRect(cell);
+    const gi = a + li, sl = slot(gi), pr = photoRect(cell);
     if (state.style !== "completa"){ ctx.fillStyle = "#ffffff"; ctx.fillRect(cell.x*s, cell.y*s, cell.w*s, cell.h*s); }
     if (sl){
       const g = geom(sl, pr, s);
@@ -536,6 +548,7 @@ function draw(mode){
   if (preview.width !== W || preview.height !== H){ preview.width = W; preview.height = H; }
   render(pctx, W/P.w, state.page, "full");
   $("pnum").textContent = `Hoja ${state.page+1} de ${state.pages}`;
+  syncOrientSeg();
   $("prevBtn").disabled = state.page === 0;
   $("nextBtn").disabled = state.page >= state.pages-1;
   $("movebar").classList.toggle("on", state.moving >= 0);
@@ -587,7 +600,7 @@ function buildThumbs(container, px, only = -1){
     const k = countOn(p);
     b.querySelector("span").textContent = `Hoja ${p+1} · ${k} ${k === 1 ? "foto" : "fotos"}`;
     b.setAttribute("aria-label", `Ir a la hoja ${p+1}`);
-    const P = paper(), cv = b.querySelector("canvas"), W = Math.round(px*dpr), H = Math.round(W*P.h/P.w);
+    const P = paper(p), cv = b.querySelector("canvas"), W = Math.round(px*dpr), H = Math.round(W*P.h/P.w);
     cv.style.aspectRatio = `${P.w} / ${P.h}`;
     const fresh = cv.width !== W || cv.height !== H;
     if (fresh){ cv.width = W; cv.height = H; }
@@ -630,7 +643,11 @@ $("ovBtn").onclick = openOverview;
 $("ovClose").onclick = closeOverview;
 
 /* ---------- hojas ---------- */
-$("addPageBtn").onclick = () => { state.pages++; goTo(state.pages-1); say("Hoja nueva agregada."); };
+$("addPageBtn").onclick = () => {
+  pushUndo();
+  state.orients[state.pages] = orientOf(state.pages-1); state.pages++; // la nueva sale como la última
+  goTo(state.pages-1); say("Hoja nueva agregada.");
+};
 let delArmed = false, delTimer = 0;
 $("delPageBtn").onclick = () => {
   const k = countOn(state.page);
@@ -642,8 +659,8 @@ $("delPageBtn").onclick = () => {
   }
   delArmed = false; $("delPageBtn").textContent = "Eliminar esta hoja";
   pushUndo();
-  const n = perPage();
-  state.slots.splice(state.page*n, n);
+  state.slots.splice(pageStart(state.page), perPage(state.page));
+  if (state.pages > 1) state.orients.splice(state.page, 1);
   state.pages = Math.max(1, state.pages-1);
   state.page = Math.min(state.page, state.pages-1);
   state.sel = -1; state.moving = -1; fitPages(); updateToolbar(); draw();
@@ -666,17 +683,41 @@ function seg(el, items, key){
 }
 // Si el cambio hace que entren otra cantidad de fotos por hoja, se reparten de nuevo
 // manteniendo a la vista la primera foto de la hoja actual
+function pageCounts(){ const out = []; for (let q = 0; q < state.pages; q++) out.push(perPage(q)); return out.join(","); }
 function relayout(apply){
-  const before = perPage(), first = state.page*before;
+  const before = pageCounts(), first = pageStart(state.page);
   apply();
-  const n = perPage();
-  if (n === before) return;
-  state.pages = 1; fitPages();
-  state.page = Math.min(Math.floor(first/n), state.pages-1);
+  if (pageCounts() === before) return;
+  state.pages = 1; fitPages(); // cada hoja conserva su orientación
+  state.page = Math.min(pageOf(first), state.pages-1);
   state.sel = -1; state.moving = -1;
 }
+// Orientación: cambia solo la hoja que se está viendo
+function setPageOrient(o, all){
+  if (all ? state.orients.every(x => x === o) : orientOf() === o) return;
+  pushUndo();
+  relayout(() => {
+    if (all) state.orients = state.orients.map(() => o); else state.orients[state.page] = o;
+    state.orient = o; // las hojas nuevas salen así
+  });
+  buildUI(); draw();
+}
+function syncOrientSeg(){
+  const o = orientOf();
+  $("orientSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.id === o));
+  const mixed = state.orients.some(x => x !== o);
+  $("orientAll").hidden = !mixed;
+  $("orientHint").textContent = state.pages > 1 ? `Solo cambia la hoja ${state.page+1}.` : "";
+}
 function buildUI(){
-  seg($("paperSeg"), PAPERS, "paper"); seg($("orientSeg"), ORIENTS, "orient");
+  seg($("paperSeg"), PAPERS, "paper");
+  $("orientSeg").innerHTML = "";
+  ORIENTS.forEach(it => {
+    const b = document.createElement("button"); b.textContent = it.label; b.dataset.id = it.id;
+    b.onclick = () => setPageOrient(it.id, false);
+    $("orientSeg").appendChild(b);
+  });
+  syncOrientSeg();
   seg($("layoutSeg"), LAYOUTS, "layout"); seg($("sizeSeg"), SIZES, "layout"); seg($("shapeSeg"), SHAPES, "shape");
   $("shapeHint").textContent = state.shape === "h" ? "Más anchas que altas (3:2, como salen de la cámara), aunque la hoja esté parada."
     : state.shape === "v" ? "Más altas que anchas (2:3), aunque la hoja esté acostada."
@@ -688,6 +729,7 @@ function buildUI(){
   updateToolbar();
 }
 ["margin","gap"].forEach(k => $(k).oninput = e => { relayout(() => { state[k] = parseFloat(e.target.value); }); buildUI(); draw(); });
+$("orientAll").onclick = () => { setPageOrient(orientOf(), true); say("Todas las hojas quedaron " + (orientOf() === "h" ? "horizontales." : "verticales.")); };
 $("cuts").onchange = e => { state.cuts = e.target.checked; draw(); };
 $("captions").onchange = e => { state.captions = e.target.checked; updateToolbar(); draw(); };
 
@@ -888,6 +930,7 @@ $("clearBtn").onclick = () => {
   }
   clearArmed = false; $("clearBtn").textContent = "Vaciar todo";
   if (state.slots.some(Boolean)) pushUndo();
+  state.orients = [orientOf()];
   state.slots = []; state.pages = 1; state.page = 0; state.sel = -1; state.moving = -1; updateToolbar(); draw();
 };
 
@@ -900,7 +943,7 @@ function doSwap(to){
   pushUndo();
   state.slots[to] = a; state.slots[from] = b;
   state.moving = -1; state.sel = to;
-  const fromPage = Math.floor(from/perPage()) + 1;
+  const fromPage = pageOf(from) + 1;
   state.flash = [to];
   updateToolbar(); draw();
   setTimeout(() => { state.flash = []; draw(); }, 500);
@@ -925,7 +968,7 @@ function updateToolbar(){
   else if (!s.gps && state.capAuto !== "year") lines.push("Esta foto no tiene ubicación guardada.");
   $("dateInfo").textContent = lines.join(" · ");
   // resolución con la que va a salir impresa
-  const li = state.sel - state.page*perPage(), cell = cells()[li];
+  const li = state.sel - pageStart(state.page), cell = cells()[li];
   const ri = $("resInfo");
   if (cell){
     const dpi = Math.round(dpiOf(s, cell)), low = dpi < LOW_DPI;
@@ -958,7 +1001,7 @@ function hit(ev){
   const r = preview.getBoundingClientRect();
   const P = paper(), mx = (ev.clientX - r.left) / r.width * P.w, my = (ev.clientY - r.top) / r.height * P.h;
   const li = cells().findIndex(c => mx >= c.x && mx <= c.x+c.w && my >= c.y && my <= c.y+c.h);
-  return li < 0 ? -1 : state.page*perPage() + li;
+  return li < 0 ? -1 : pageStart(state.page) + li;
 }
 preview.addEventListener("pointerdown", ev => {
   const gi = hit(ev);
@@ -977,7 +1020,7 @@ preview.addEventListener("pointermove", ev => {
   drag.moved = true;
   state.sel = drag.gi;
   const r = preview.getBoundingClientRect(), s = r.width / paper().w;
-  const g = geom(sl, photoRect(cells()[drag.gi - state.page*perPage()]), s);
+  const g = geom(sl, photoRect(cells()[drag.gi - pageStart(state.page)]), s);
   if (g.ex > 0) sl.fx = Math.min(1, Math.max(0, sl.fx - dx/g.ex));
   if (g.ey > 0) sl.fy = Math.min(1, Math.max(0, sl.fy - dy/g.ey));
   drag.x = ev.clientX; drag.y = ev.clientY;
@@ -1003,7 +1046,7 @@ async function pageCanvas(p){
     try { hi.set(sl.id, f || await createImageBitmap(sl.blob)); } catch(_){}
   }
   // 300 ppp: A4 vertical = 2480 × 3508 px
-  const P = paper(), c = document.createElement("canvas");
+  const P = paper(p), c = document.createElement("canvas");
   c.width = Math.round(P.w/25.4*300); c.height = Math.round(P.h/25.4*300);
   render(c.getContext("2d"), c.width/P.w, p, false, hi);
   hi.forEach((b, id) => { if (fullCache.get(id) !== b) b.close(); });
@@ -1036,15 +1079,16 @@ $("jpgBtn").onclick = async () => {
 async function buildPdf(){
   try { await document.fonts.load("500 40px Caveat"); } catch(_){}
   const pages = [...Array(state.pages).keys()].filter(p => countOn(p) > 0);
-  const P = paper(), orient = P.w > P.h ? "landscape" : "portrait";
-  const pdf = new window.jspdf.jsPDF({unit:"mm", format:[P.w, P.h], orientation:orient});
+  const P0 = paper(pages[0] || 0);
+  const pdf = new window.jspdf.jsPDF({unit:"mm", format:[P0.w, P0.h], orientation:P0.w > P0.h ? "landscape" : "portrait"});
   let firstCanvas = null;
   try {
     for (let i = 0; i < pages.length; i++){
       statusLock = true; $("status").textContent = `Preparando hoja ${i+1} de ${pages.length}…`;
       await new Promise(r => setTimeout(r, 0));
       const c = await pageCanvas(pages[i]);
-      if (i > 0) pdf.addPage([P.w, P.h], orient);
+      const P = paper(pages[i]);
+      if (i > 0) pdf.addPage([P.w, P.h], P.w > P.h ? "landscape" : "portrait");
       pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, P.w, P.h, undefined, "FAST");
       if (!firstCanvas) firstCanvas = c; else c.width = c.height = 0; // libera memoria (importante en iPhone)
     }
@@ -1111,7 +1155,7 @@ const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = (
 
 function record(){
   return {id:proj.id, name:proj.name, created:proj.created,
-    settings:{...currentSettings(), pages:state.pages},
+    settings:{...currentSettings(), pages:state.pages, orients:[...state.orients]},
     slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, autoCap:sl.autoCap, gps:sl.gps || null, place:sl.place ?? null, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h} : null)};
 }
 // Los guardados se encolan: nunca corren dos a la vez y "Guardar ahora" no se pierde
@@ -1126,7 +1170,7 @@ async function doSave(force){
   const pending = new Map();
   state.slots.forEach(sl => { if (sl && (!persisted.has(sl.id) || sl.dirty)) pending.set(sl.id, sl); });
   if (!force && sig === lastSig && !pending.size) return;
-  clearTimeout(autoTimer);
+  clearTimeout(autoTimer); autoTimer = 0;
   setSaveState("saving");
   try {
     const d = await db();
@@ -1180,14 +1224,15 @@ function isDirty(){
 // Cada cambio avisa acá; si de verdad cambió algo se marca ● y se guarda solo a los pocos segundos
 const SAVE_DELAY = 2500;
 let checkTimer = 0, autoTimer = 0;
-function noteChange(){ clearTimeout(checkTimer); checkTimer = setTimeout(checkDirty, 600); }
+// Sin reiniciar la espera en cada cambio: si no, trabajando sin parar nunca se guardaría
+function noteChange(){ if (!checkTimer) checkTimer = setTimeout(() => { checkTimer = 0; checkDirty(); }, 600); }
 function checkDirty(){
   if (!proj) return; // todavía abriendo: no pisar la configuración recordada con la de fábrica
   rememberSettings();
   if (!dbOk || saveState === "saving") return;
   if (isDirty()){
     setSaveState("dirty");
-    clearTimeout(autoTimer); autoTimer = setTimeout(() => saveProject(), SAVE_DELAY);
+    if (!autoTimer) autoTimer = setTimeout(() => { autoTimer = 0; saveProject(); }, SAVE_DELAY);
   } else if (!saveError) setSaveState("saved");
 }
 
@@ -1206,6 +1251,8 @@ async function listProjects(){ const d = await db(); return (await reqP(d.transa
 function applySettings(st){
   Object.assign(state, {paper:st.paper||"a4", orient:st.orient||"v", layout:ALL_LAYOUTS.some(l => l.id === st.layout) ? st.layout : "12", shape:SHAPES.some(x => x.id === st.shape) ? st.shape : "auto", capAuto:st.capAuto||"year", style:st.style||"polaroid", bg:st.bg||"#ffffff", margin:st.margin ?? 5, gap:st.gap ?? 3,
     cuts:st.cuts ?? true, captions:st.captions ?? true, capPos:st.capPos||"br", pages:st.pages||1});
+  // proyectos anteriores no tienen orientación por hoja: todas como la general
+  state.orients = Array.isArray(st.orients) && st.orients.length ? st.orients.map(o => o === "h" ? "h" : "v") : Array(state.pages).fill(state.orient);
   $("margin").value = state.margin; $("gap").value = state.gap;
   $("cuts").checked = state.cuts; $("captions").checked = state.captions;
 }
