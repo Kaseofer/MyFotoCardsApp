@@ -19,19 +19,19 @@
 <style>
 :root{
   --bg:#eceef2; --surface:#ffffff; --ink:#1d2433; --muted:#5f6878; --line:#d6d9e0;
-  --accent:#6b3fa0; --accent-ink:#ffffff; --accent-soft:#efe7f8; --warn:#9a5200;
+  --accent:#6b3fa0; --accent-ink:#ffffff; --accent-soft:#efe7f8; --warn:#9a5200; --ok:#1f7a4d; --bad:#b3261e;
   color-scheme:light; box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#15171c; --surface:#1f232b; --ink:#e8eaef; --muted:#9aa2b1; --line:#323846;
-    --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; --warn:#fbbf24; color-scheme:dark;
+    --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; --warn:#fbbf24; --ok:#6fd39b; --bad:#ff8a80; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#15171c; --surface:#1f232b; --ink:#e8eaef; --muted:#9aa2b1; --line:#323846;
-  --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; --warn:#fbbf24; color-scheme:dark;
+  --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; --warn:#fbbf24; --ok:#6fd39b; --bad:#ff8a80; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -122,9 +122,19 @@ canvas#preview.grab{touch-action:none}
 .ov-head h2{margin:0;font-size:1.3rem}
 .ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px;overflow-y:auto;max-width:1320px;width:100%;margin:0 auto;padding:4px}
 .textin{font:inherit;font-weight:600;width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
-.saveinfo{color:var(--muted);font-size:.85rem;margin:6px 0 10px;min-height:1.2em}
-.saveinfo.warn{color:#b3261e}
-.projpanel{margin-bottom:14px}
+.saveinfo{color:var(--muted);font-size:.85rem;margin:8px 0 0}
+.saveinfo.warn{color:var(--bad)}
+.projpanel{margin-bottom:14px;padding:10px}
+.projrow{display:flex;gap:8px;align-items:center}
+.projrow .textin{flex:1;min-width:0}
+.iconbtn{flex:0 0 auto;width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.iconbtn svg{width:21px;height:21px;display:block}
+.savestate[data-state="saved"]{color:var(--ok)}
+.savestate[data-state="dirty"]{color:var(--warn)}
+.savestate[data-state="saving"]{color:var(--muted)}
+.savestate[data-state="saving"] svg{animation:spin .9s linear infinite}
+.savestate[data-state="error"]{color:var(--bad);border-color:var(--bad)}
+@keyframes spin{to{transform:rotate(360deg)}}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:25;display:none;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
 .modal.on{display:flex}
 .modal-card{background:var(--surface);color:var(--ink);border-radius:16px;width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;padding:18px;gap:12px}
@@ -147,13 +157,12 @@ canvas#preview.grab{touch-action:none}
     <h1>Hojas de fotos para imprimir</h1>
     <p class="lead">Cargá una carpeta entera y se reparten solas en las hojas que hagan falta. Las fotos se quedan en tu dispositivo.</p>
     <div class="panel projpanel">
-      <label class="glabel" for="projName">Proyecto</label>
-      <input id="projName" class="textin" maxlength="60" autocomplete="off">
-      <div class="saveinfo" id="saveInfo" aria-live="polite"></div>
-      <div class="btn-row">
-        <button class="btn" id="saveNowBtn">Guardar ahora</button>
-        <button class="btn" id="projectsBtn">Mis proyectos</button>
+      <div class="projrow">
+        <input id="projName" class="textin" maxlength="60" autocomplete="off" aria-label="Nombre del proyecto">
+        <button class="iconbtn savestate" id="saveState" data-state="saved" title="Todo guardado" aria-label="Todo guardado"></button>
+        <button class="iconbtn" id="projectsBtn" title="Mis proyectos" aria-label="Mis proyectos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/></svg></button>
       </div>
+      <div class="saveinfo warn" id="saveInfo" aria-live="polite" hidden></div>
     </div>
     <div class="panel">
       <div class="group btns">
@@ -505,7 +514,7 @@ function draw(mode){
   $("movebar").classList.toggle("on", state.moving >= 0);
   if (!statusLock) $("status").textContent = statusText();
   $("undoBtn").disabled = !undoStack.length;
-  if (mode !== "preview") scheduleThumbs(mode !== "page");
+  if (mode !== "preview"){ scheduleThumbs(mode !== "page"); noteChange(); }
   wantFull();
 }
 function statusText(){
@@ -1072,7 +1081,7 @@ const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = (
 
 function record(){
   return {id:proj.id, name:proj.name, created:proj.created,
-    settings:{paper:state.paper, orient:state.orient, layout:state.layout, capAuto:state.capAuto, style:state.style, bg:state.bg, margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos, pages:state.pages},
+    settings:{...currentSettings(), pages:state.pages},
     slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, autoCap:sl.autoCap, gps:sl.gps || null, place:sl.place ?? null, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h} : null)};
 }
 // Los guardados se encolan: nunca corren dos a la vez y "Guardar ahora" no se pierde
@@ -1087,7 +1096,8 @@ async function doSave(force){
   const pending = new Map();
   state.slots.forEach(sl => { if (sl && (!persisted.has(sl.id) || sl.dirty)) pending.set(sl.id, sl); });
   if (!force && sig === lastSig && !pending.size) return;
-  showSaveInfo("Guardando…");
+  clearTimeout(autoTimer);
+  setSaveState("saving");
   try {
     const d = await db();
     const t = d.transaction(["projects","photos"], "readwrite");
@@ -1101,18 +1111,66 @@ async function doSave(force){
     if (proj === p){
       persisted = keep; pending.forEach(sl => sl.dirty = false);
       lastSig = sig; lastSavedAt = new Date(); saveError = false;
+      remember(LS_LAST, p.id);
     }
   } catch(err){ saveError = true; }
-  showSaveInfo();
+  if (saveError) setSaveState("error");
+  else if (isDirty()){ setSaveState("dirty"); noteChange(); } // hubo cambios mientras se guardaba
+  else setSaveState("saved");
 }
 function hhmm(d){ return d.toLocaleTimeString("es", {hour:"2-digit", minute:"2-digit"}); }
-function showSaveInfo(msg){
-  const el = $("saveInfo");
-  el.classList.toggle("warn", saveError || !dbOk);
-  if (!dbOk){ el.textContent = "Este navegador no permite guardar (¿modo incógnito?). Descargá una copia para no perder el trabajo."; return; }
-  if (saveError){ el.textContent = "No se pudo guardar. Puede faltar espacio: descargá una copia del proyecto."; return; }
-  el.textContent = msg || (lastSavedAt ? `Guardado a las ${hhmm(lastSavedAt)} · se guarda solo cada minuto` : "Se guarda solo cada minuto");
+/* símbolo de guardado: ✓ guardado · ● cambios sin guardar · ◌ guardando · ⚠ error */
+const SAVE_ICONS = {
+  saved: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  dirty: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.5" fill="currentColor"/></svg>',
+  saving: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 1-9 9"/></svg>',
+  error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5h.01"/></svg>'
+};
+let saveState = "";
+function setSaveState(st){
+  if (!dbOk) st = "error";
+  const el = $("saveState");
+  if (saveState !== st){ el.innerHTML = SAVE_ICONS[st]; el.dataset.state = st; saveState = st; }
+  const label = st === "saved" ? (lastSavedAt ? `Todo guardado (${hhmm(lastSavedAt)})` : "Todo guardado")
+    : st === "dirty" ? "Hay cambios sin guardar: se guardan solos en unos segundos"
+    : st === "saving" ? "Guardando…"
+    : !dbOk ? "Este navegador no permite guardar" : "No se pudo guardar";
+  el.title = label; el.setAttribute("aria-label", label + ". Tocá para guardar ahora.");
+  const info = $("saveInfo");
+  info.hidden = st !== "error";
+  if (st === "error") info.textContent = !dbOk
+    ? "Este navegador no permite guardar (¿modo incógnito?). Descargá una copia desde Mis proyectos para no perder el trabajo."
+    : "No se pudo guardar. Puede faltar espacio: descargá una copia desde Mis proyectos.";
 }
+function isDirty(){
+  if (!proj) return false;
+  if (JSON.stringify(record()) !== lastSig) return true;
+  return state.slots.some(sl => sl && (!persisted.has(sl.id) || sl.dirty));
+}
+// Cada cambio avisa acá; si de verdad cambió algo se marca ● y se guarda solo a los pocos segundos
+const SAVE_DELAY = 2500;
+let checkTimer = 0, autoTimer = 0;
+function noteChange(){ clearTimeout(checkTimer); checkTimer = setTimeout(checkDirty, 600); }
+function checkDirty(){
+  if (!proj) return; // todavía abriendo: no pisar la configuración recordada con la de fábrica
+  rememberSettings();
+  if (!dbOk || saveState === "saving") return;
+  if (isDirty()){
+    setSaveState("dirty");
+    clearTimeout(autoTimer); autoTimer = setTimeout(() => saveProject(), SAVE_DELAY);
+  } else if (!saveError) setSaveState("saved");
+}
+
+/* lo que se recuerda en este navegador: el último proyecto y la última configuración usada */
+const LS_LAST = "mfc-ultimo-proyecto", LS_CONFIG = "mfc-configuracion";
+function remember(k, v){ try { localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); } catch(_){} }
+function recall(k){ try { return localStorage.getItem(k); } catch(_){ return null; } }
+function currentSettings(){
+  return {paper:state.paper, orient:state.orient, layout:state.layout, capAuto:state.capAuto, style:state.style, bg:state.bg,
+    margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos};
+}
+function rememberSettings(){ remember(LS_CONFIG, currentSettings()); }
+function lastSettings(){ try { return JSON.parse(recall(LS_CONFIG) || "null") || {}; } catch(_){ return {}; } }
 async function listProjects(){ const d = await db(); return (await reqP(d.transaction("projects").objectStore("projects").getAll())).sort((a,b) => b.updated - a.updated); }
 
 function applySettings(st){
@@ -1127,9 +1185,10 @@ async function newProject(){
   releaseImages(); clearUndo();
   proj = {id:newId("p"), name:`Proyecto ${n}`, created:Date.now()}; persisted = new Set();
   state.slots = []; state.page = 0; state.sel = -1; state.moving = -1;
-  applySettings({});
+  applySettings({...lastSettings(), pages:1}); // arranca con la configuración que venías usando
   $("projName").value = proj.name; lastSig = null; lastSavedAt = null;
   buildUI(); draw(); await saveProject(true);
+  remember(LS_LAST, proj.id);
 }
 async function openProject(id){
   if (proj && proj.id !== id) await saveProject();
@@ -1169,7 +1228,8 @@ async function openProject(id){
   state.slots = slots; state.page = 0; state.sel = -1; state.moving = -1; fitPages();
   $("projName").value = proj.name;
   lastSig = JSON.stringify(record()); lastSavedAt = new Date(rec.updated);
-  statusLock = false; buildUI(); draw(); showSaveInfo();
+  statusLock = false; buildUI(); draw(); setSaveState("saved"); checkDirty();
+  remember(LS_LAST, proj.id);
   resolvePlaces();
 }
 async function deleteProject(id){
@@ -1181,10 +1241,14 @@ async function deleteProject(id){
   await doneP(t);
 }
 
-$("projName").addEventListener("input", e => { if (proj) proj.name = e.target.value.trim() || "Sin nombre"; });
+$("projName").addEventListener("input", e => { if (proj){ proj.name = e.target.value.trim() || "Sin nombre"; noteChange(); } });
 $("projName").addEventListener("change", () => saveProject());
-$("saveNowBtn").onclick = () => saveProject(true);
-setInterval(() => saveProject(), 60000);
+$("saveState").onclick = async () => {
+  if (!dbOk){ say("Este navegador no permite guardar. Descargá una copia desde Mis proyectos.", 5000); return; }
+  await saveProject(true);
+  say(saveError ? "No se pudo guardar." : `Todo guardado a las ${hhmm(lastSavedAt)}.`);
+};
+setInterval(() => saveProject(), 30000); // respaldo por si algún cambio no avisó
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveProject(); });
 window.addEventListener("pagehide", () => saveProject());
 
@@ -1277,15 +1341,17 @@ $("fileBackup").onchange = async e => {
 };
 
 window.addEventListener("resize", draw);
-buildUI(); draw();
+buildUI(); draw(); setSaveState("saving"); // mientras abre el último proyecto
 (async () => {
   try { await navigator.storage?.persist?.(); } catch(_){}
   try {
-    const list = await listProjects();
-    if (list.length) await openProject(list[0].id); else await newProject();
+    const list = await listProjects(), last = recall(LS_LAST);
+    const pick = list.find(p => p.id === last) || list[0]; // el último con el que se trabajó
+    if (pick) await openProject(pick.id); else await newProject();
   } catch(_){
     dbOk = false; proj = {id:newId("p"), name:"Proyecto 1", created:Date.now()};
-    $("projName").value = proj.name; showSaveInfo();
+    applySettings({...lastSettings(), pages:1}); buildUI(); draw();
+    $("projName").value = proj.name; setSaveState("error");
   }
   await takeSharedPhotos();
 })();

@@ -36,3 +36,10 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/ — se puede agregar a l
 - **Fotos por hoja** (8 a 20, llenan la hoja) **o tamaño fijo** en cm: 13×18, 10×15, 9×13, 6×9 y 4×4 carnet. Con tamaño fijo entran las que quepan, centradas y en tamaño real; si no entra ninguna, se achica y lo avisa.
 - **Texto automático:** año, lugar o lugar y año. El lugar sale del GPS guardado en la foto y se consulta a [OpenStreetMap (Nominatim)](https://nominatim.org/) **solo si se elige Lugar**: se envían las coordenadas, nunca las fotos. Se pide de a una por segundo y se recuerda por zona. Un texto escrito a mano no se pisa.
 - **Aviso de baja resolución:** las fotos que saldrían impresas a menos de 150 ppp muestran una marca naranja (solo en pantalla) y la barra de la foto dice la calidad.
+
+## Guardado
+
+- Se guarda solo unos segundos después de cada cambio (y cada 30 s como respaldo, y al cerrar o cambiar de app).
+- El símbolo al lado del nombre muestra el estado: ✓ guardado · ● cambios sin guardar · ◌ guardando · ⚠ no se pudo guardar. Tocarlo guarda en el momento.
+- Al abrir la app se carga el último proyecto con el que se trabajó, con su configuración.
+- Los proyectos nuevos arrancan con la última configuración usada (hoja, tamaño, estilo, márgenes, textos).
