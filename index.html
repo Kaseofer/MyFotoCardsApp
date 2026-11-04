@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hojas A4 de fotos para imprimir</title>
+<title>MyFotoCards: hojas de fotos para imprimir</title>
 <meta name="description" content="Armá hojas A4 con fotos estilo polaroid y descargalas listas para imprimir.">
 <meta name="theme-color" content="#6b3fa0">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,19 +19,19 @@
 <style>
 :root{
   --bg:#eceef2; --surface:#ffffff; --ink:#1d2433; --muted:#5f6878; --line:#d6d9e0;
-  --accent:#6b3fa0; --accent-ink:#ffffff; --accent-soft:#efe7f8;
+  --accent:#6b3fa0; --accent-ink:#ffffff; --accent-soft:#efe7f8; --warn:#9a5200;
   color-scheme:light; box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#15171c; --surface:#1f232b; --ink:#e8eaef; --muted:#9aa2b1; --line:#323846;
-    --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; color-scheme:dark;
+    --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; --warn:#fbbf24; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#15171c; --surface:#1f232b; --ink:#e8eaef; --muted:#9aa2b1; --line:#323846;
-  --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; color-scheme:dark;
+  --accent:#b48ce6; --accent-ink:#1a1022; --accent-soft:#2c2338; --warn:#fbbf24; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -69,6 +69,8 @@ canvas#preview.grab{touch-action:none}
 .pager .undo{width:auto;border-radius:999px;font-size:.95rem;padding:0 14px}
 [hidden]{display:none!important}
 .shareready{display:block;max-width:540px;margin:8px auto 0}
+.resinfo{flex-basis:100%;text-align:center;color:var(--muted);font-size:.85rem}
+.resinfo.warn{color:var(--warn);font-weight:600}
 .tbhint{flex-basis:100%;text-align:center;color:var(--muted);font-size:.85rem}
 .movebar{display:none;margin:4px auto 8px;max-width:540px;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:9px 12px;align-items:center;gap:10px;justify-content:space-between}
 .movebar.on{display:flex}
@@ -142,7 +144,7 @@ canvas#preview.grab{touch-action:none}
 <body>
 <div class="wrap">
   <div>
-    <h1>Hojas A4 de fotos</h1>
+    <h1>Hojas de fotos para imprimir</h1>
     <p class="lead">Cargá una carpeta entera y se reparten solas en las hojas que hagan falta. Las fotos se quedan en tu dispositivo.</p>
     <div class="panel projpanel">
       <label class="glabel" for="projName">Proyecto</label>
@@ -159,12 +161,16 @@ canvas#preview.grab{touch-action:none}
         <button class="btn" id="addBtn">Agregar fotos sueltas</button>
         <button class="btn" id="sortBtn">Ordenar todo por fecha</button>
       </div>
+      <div class="group"><span class="glabel">Hoja</span><div class="seg" id="paperSeg"></div></div>
+      <div class="group"><span class="glabel">Orientación</span><div class="seg" id="orientSeg"></div></div>
       <div class="group"><span class="glabel">Fotos por hoja</span><div class="seg" id="layoutSeg"></div></div>
+      <div class="group"><span class="glabel">O un tamaño fijo de foto (cm)</span><div class="seg" id="sizeSeg"></div>
+        <p class="hint">Entran las que quepan en la hoja, en tamaño real.</p></div>
       <div class="group"><span class="glabel">Estilo</span><div class="seg" id="styleSeg"></div></div>
       <div class="group"><span class="glabel">Fondo de la hoja</span><div class="seg" id="bgSeg"></div></div>
       <div class="group">
         <label class="glabel" for="margin">Margen de la hoja</label>
-        <div class="range"><input type="range" id="margin" min="2" max="12" step="0.5" value="5"><output id="marginOut"></output></div>
+        <div class="range"><input type="range" id="margin" min="0" max="12" step="0.5" value="5"><output id="marginOut"></output></div>
       </div>
       <div class="group">
         <label class="glabel" for="gap">Separación entre fotos</label>
@@ -172,6 +178,8 @@ canvas#preview.grab{touch-action:none}
       </div>
       <div class="group"><label class="check"><input type="checkbox" id="cuts" checked> Mostrar líneas finas de corte</label></div>
       <div class="group"><label class="check"><input type="checkbox" id="captions" checked> Escribir texto en las fotos (año o lugar)</label></div>
+      <div class="group"><span class="glabel">Texto automático</span><div class="seg" id="autoSeg"></div>
+        <p class="hint" id="placeHint" hidden>El lugar sale de la ubicación GPS guardada en cada foto. Para saber el nombre se consulta OpenStreetMap con esas coordenadas; las fotos no se envían.</p></div>
       <div class="group"><span class="glabel">Ubicación del texto</span><div class="seg" id="posSeg"></div></div>
       <div class="group btns">
         <button class="btn primary" id="pdfBtn">Descargar PDF con todas las hojas</button>
@@ -190,9 +198,10 @@ canvas#preview.grab{touch-action:none}
       <button id="undoBtn" class="undo" disabled>↶ Deshacer</button>
     </div>
     <div class="movebar" id="movebar"><span>Tocá el lugar donde va. Podés cambiar de hoja.</span><button id="moveCancel">Cancelar</button></div>
-    <div class="sheet-box"><canvas id="preview" aria-label="Vista previa de la hoja A4"></canvas></div>
+    <div class="sheet-box"><canvas id="preview" aria-label="Vista previa de la hoja"></canvas></div>
     <div class="toolbar" id="toolbar">
       <div class="tbhint">Arrastrá la foto para encuadrarla. Tocala de nuevo para soltarla.</div>
+      <div class="resinfo" id="resInfo" aria-live="polite"></div>
       <button data-act="move" class="hl">Mover o intercambiar</button>
       <button data-act="rotate">Girar ↻</button>
       <button data-act="change">Cambiar foto</button>
@@ -249,18 +258,37 @@ canvas#preview.grab{touch-action:none}
 </div>
 
 <script>
-const A4 = {w:210, h:297};
+// Medidas en mm, siempre en vertical; la orientación horizontal las da vuelta
+const PAPERS = [
+  {id:"a4", w:210, h:297, label:"A4"},
+  {id:"carta", w:215.9, h:279.4, label:"Carta"},
+  {id:"foto", w:101.6, h:152.4, label:"Papel foto 10×15"}
+];
+const ORIENTS = [{id:"v", label:"Vertical"}, {id:"h", label:"Horizontal"}];
+// Cuadrícula: c columnas × r filas que llenan la hoja · Tamaño fijo: fw × fh mm, entran las que quepan
 const LAYOUTS = [
   {id:"8", c:2, r:4, label:"8"}, {id:"9", c:3, r:3, label:"9"}, {id:"12", c:3, r:4, label:"12"},
   {id:"15", c:3, r:5, label:"15"}, {id:"20", c:4, r:5, label:"20"}
 ];
+const SIZES = [
+  {id:"s13x18", fw:130, fh:180, label:"13×18"}, {id:"s10x15", fw:100, fh:150, label:"10×15"},
+  {id:"s9x13", fw:90, fh:130, label:"9×13"}, {id:"s6x9", fw:60, fh:90, label:"6×9"},
+  {id:"s4x4", fw:40, fh:40, label:"4×4 carnet"}
+];
+const ALL_LAYOUTS = [...LAYOUTS, ...SIZES];
+const AUTOCAP = [{id:"year", label:"Año"}, {id:"place", label:"Lugar"}, {id:"both", label:"Lugar y año"}];
+const LOW_DPI = 150; // por debajo de esto la foto impresa se puede ver pixelada
+function paper(){
+  const p = PAPERS.find(p => p.id === state.paper) || PAPERS[0];
+  return state.orient === "h" ? {w:p.h, h:p.w} : {w:p.w, h:p.h};
+}
 const STYLES = [{id:"polaroid", label:"Polaroid"}, {id:"borde", label:"Borde fino"}, {id:"completa", label:"Sin marco"}];
 const BGS = [{id:"#ffffff", label:"Blanco"}, {id:"#ececec", label:"Gris claro"}];
 const POS = [
   {id:"br", label:"Abajo derecha"}, {id:"bl", label:"Abajo izquierda"}, {id:"bc", label:"Abajo centro"},
   {id:"tr", label:"Arriba derecha"}, {id:"tl", label:"Arriba izquierda"}, {id:"marco", label:"En el marco"}
 ];
-const state = {layout:"12", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br",
+const state = {paper:"a4", orient:"v", layout:"12", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br", capAuto:"year",
   slots:[], pages:1, page:0, sel:-1, moving:-1, flash:[]};
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -284,18 +312,38 @@ const $ = id => document.getElementById(id);
 const preview = $("preview"), pctx = preview.getContext("2d");
 
 /* ---------- datos ---------- */
-const perPage = () => { const l = LAYOUTS.find(l => l.id === state.layout); return l.c*l.r; };
+const perPage = () => { const g = grid(); return g.c*g.r; };
 const slot = i => state.slots[i] || null;
 function lastFilled(){ for (let i = state.slots.length-1; i >= 0; i--) if (state.slots[i]) return i; return -1; }
 function fitPages(){ state.pages = Math.max(state.pages, Math.ceil((lastFilled()+1)/perPage()), 1); }
 function countOn(p){ const n = perPage(); let k = 0; for (let i = p*n; i < (p+1)*n; i++) if (slot(i)) k++; return k; }
 
 /* ---------- geometría ---------- */
+// Devuelve columnas, filas, medida de cada espacio y desde dónde empieza (centrado)
+function grid(){
+  const P = paper(), m = state.margin, g = state.gap;
+  const L = ALL_LAYOUTS.find(l => l.id === state.layout) || LAYOUTS[2];
+  const AW = P.w - 2*m, AH = P.h - 2*m;
+  if (!L.fw){
+    let c = L.c, r = L.r;
+    if (P.w > P.h) [c, r] = [r, c]; // en horizontal se dan vuelta filas y columnas
+    return {c, r, w:(AW-(c-1)*g)/c, h:(AH-(r-1)*g)/r, x0:m, y0:m, fixed:false};
+  }
+  const fit = (w, h) => ({c:Math.floor((AW+g+1e-6)/(w+g)), r:Math.floor((AH+g+1e-6)/(h+g)), w, h});
+  const a = fit(L.fw, L.fh), b = fit(L.fh, L.fw);
+  let best = b.c*b.r > a.c*a.r ? b : a, shrunk = false;
+  if (!best.c || !best.r){
+    // No entra ni una en tamaño real: una sola, lo más grande posible con esa proporción
+    const k1 = Math.min(AW/L.fw, AH/L.fh), k2 = Math.min(AW/L.fh, AH/L.fw);
+    best = k1 >= k2 ? {c:1, r:1, w:L.fw*k1, h:L.fh*k1} : {c:1, r:1, w:L.fh*k2, h:L.fw*k2};
+    shrunk = true;
+  }
+  const usedW = best.c*best.w + (best.c-1)*g, usedH = best.r*best.h + (best.r-1)*g;
+  return {...best, x0:m + (AW-usedW)/2, y0:m + (AH-usedH)/2, fixed:true, shrunk, label:L.label};
+}
 function cells(){
-  const l = LAYOUTS.find(l => l.id === state.layout), m = state.margin, g = state.gap;
-  const w = (A4.w - 2*m - (l.c-1)*g) / l.c, h = (A4.h - 2*m - (l.r-1)*g) / l.r;
-  const out = [];
-  for (let j=0;j<l.r;j++) for (let i=0;i<l.c;i++) out.push({x:m + i*(w+g), y:m + j*(h+g), w, h});
+  const G = grid(), g = state.gap, out = [];
+  for (let j=0;j<G.r;j++) for (let i=0;i<G.c;i++) out.push({x:G.x0 + i*(G.w+g), y:G.y0 + j*(G.h+g), w:G.w, h:G.h});
   return out;
 }
 function photoRect(cell){
@@ -310,6 +358,13 @@ function geom(sl, pr, s){
   const pw = pr.w*s, ph = pr.h*s, sc = Math.max(pw/iw, ph/ih) * sl.zoom;
   const dw = iw*sc, dh = ih*sc;
   return {dw, dh, ex:dw-pw, ey:dh-ph, sc};
+}
+// Puntos por pulgada con los que va a salir impresa la foto (según su espacio y el zoom)
+function dpiOf(sl, cell){ return 25.4 / geom(sl, photoRect(cell), 1).sc; }
+function lowResOn(p){
+  const n = perPage(), cs = cells(); let k = 0;
+  cs.forEach((cell, li) => { const sl = slot(p*n + li); if (sl && dpiOf(sl, cell) < LOW_DPI) k++; });
+  return k;
 }
 
 /* ---------- imágenes en memoria ----------
@@ -356,9 +411,9 @@ function releaseImages(){
 /* ---------- dibujo ---------- */
 // hi: Map opcional id → imagen completa (para exportar)
 function render(ctx, s, page, ui, hi){
-  const n = perPage(), cs = cells();
+  const n = perPage(), cs = cells(), P = paper();
   ctx.save();
-  ctx.fillStyle = state.bg; ctx.fillRect(0,0,A4.w*s,A4.h*s);
+  ctx.fillStyle = state.bg; ctx.fillRect(0,0,P.w*s,P.h*s);
   cs.forEach((cell, li) => {
     const gi = page*n + li, sl = slot(gi), pr = photoRect(cell);
     if (state.style !== "completa"){ ctx.fillStyle = "#ffffff"; ctx.fillRect(cell.x*s, cell.y*s, cell.w*s, cell.h*s); }
@@ -374,6 +429,7 @@ function render(ctx, s, page, ui, hi){
       ctx.drawImage(src, -w/2, -h/2, w, h);
       ctx.restore();
       if (state.captions && sl.caption) drawCaption(ctx, s, sl, cell, pr);
+      if (ui && dpiOf(sl, cell) < LOW_DPI) drawLowRes(ctx, s, pr); // solo en pantalla, nunca en lo impreso
     } else if (ui){
       ctx.fillStyle = "#f1eef6"; ctx.fillRect(pr.x*s, pr.y*s, pr.w*s, pr.h*s);
       ctx.strokeStyle = "#b9a6d4"; ctx.lineWidth = Math.max(1, 0.3*s); ctx.setLineDash([1.5*s, 1.2*s]);
@@ -396,6 +452,16 @@ function render(ctx, s, page, ui, hi){
       }
     }
   });
+  ctx.restore();
+}
+function drawLowRes(ctx, s, pr){
+  const r = Math.max(5, Math.min(pr.w, pr.h)*0.09*s), cx = pr.x*s + r*1.4, cy = pr.y*s + r*1.4;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = "#f59e0b"; ctx.fill();
+  ctx.lineWidth = Math.max(1, r*0.18); ctx.strokeStyle = "#fff"; ctx.stroke();
+  ctx.fillStyle = "#1d1300"; ctx.font = `800 ${r*1.3}px Figtree, system-ui, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", cx, cy + r*0.05);
   ctx.restore();
 }
 function drawCaption(ctx, s, sl, cell, pr){
@@ -423,19 +489,34 @@ function drawCaption(ctx, s, sl, cell, pr){
 
 // mode: "preview" solo la hoja grande · "page" también su miniatura · sin valor todo
 function draw(mode){
+  const P = paper(), ratio = P.w/P.h;
+  const css = `${P.w} / ${P.h}`;
+  if (preview.style.aspectRatio !== css){
+    preview.style.aspectRatio = css;
+    preview.style.maxWidth = `min(${P.w > P.h ? 760 : 540}px, calc((100vh - 200px) * ${ratio.toFixed(4)}))`;
+  }
   const dpr = window.devicePixelRatio || 1, cw = preview.clientWidth || 300;
-  const W = Math.round(cw*dpr), H = Math.round(cw*dpr*A4.h/A4.w);
+  const W = Math.round(cw*dpr), H = Math.round(cw*dpr/ratio);
   if (preview.width !== W || preview.height !== H){ preview.width = W; preview.height = H; }
-  render(pctx, W/A4.w, state.page, "full");
+  render(pctx, W/P.w, state.page, "full");
   $("pnum").textContent = `Hoja ${state.page+1} de ${state.pages}`;
   $("prevBtn").disabled = state.page === 0;
   $("nextBtn").disabled = state.page >= state.pages-1;
   $("movebar").classList.toggle("on", state.moving >= 0);
-  const c = cells()[0];
-  if (!statusLock) $("status").textContent = `${countOn(state.page)} de ${perPage()} fotos en esta hoja · cada espacio mide ${c.w.toFixed(1)} × ${c.h.toFixed(1)} mm`;
+  if (!statusLock) $("status").textContent = statusText();
   $("undoBtn").disabled = !undoStack.length;
   if (mode !== "preview") scheduleThumbs(mode !== "page");
   wantFull();
+}
+function statusText(){
+  const G = grid(), cm = v => (v/10).toFixed(1).replace(/\.0$/, "").replace(".", ",");
+  let size = G.fixed && !G.shrunk ? `fotos de ${G.label} cm`
+    : G.shrunk ? `${G.label} cm no entra: se achicó a ${cm(G.w)} × ${cm(G.h)} cm`
+    : `cada espacio mide ${cm(G.w)} × ${cm(G.h)} cm`;
+  let t = `${countOn(state.page)} de ${perPage()} fotos en esta hoja · ${size}`;
+  const low = lowResOn(state.page);
+  if (low) t += ` · ⚠ ${low} ${low === 1 ? "foto puede salir pixelada" : "fotos pueden salir pixeladas"}`;
+  return t;
 }
 let statusLock = false;
 function say(msg, ms=2500){ statusLock = true; $("status").textContent = msg; clearTimeout(say.t); say.t = setTimeout(() => { statusLock = false; draw(); }, ms); }
@@ -470,10 +551,11 @@ function buildThumbs(container, px, only = -1){
     const k = countOn(p);
     b.querySelector("span").textContent = `Hoja ${p+1} · ${k} ${k === 1 ? "foto" : "fotos"}`;
     b.setAttribute("aria-label", `Ir a la hoja ${p+1}`);
-    const cv = b.querySelector("canvas"), W = Math.round(px*dpr), H = Math.round(W*A4.h/A4.w);
-    const fresh = cv.width !== W;
+    const P = paper(), cv = b.querySelector("canvas"), W = Math.round(px*dpr), H = Math.round(W*P.h/P.w);
+    cv.style.aspectRatio = `${P.w} / ${P.h}`;
+    const fresh = cv.width !== W || cv.height !== H;
     if (fresh){ cv.width = W; cv.height = H; }
-    if (fresh || only < 0 || p === only) render(cv.getContext("2d"), W/A4.w, p, "thumb");
+    if (fresh || only < 0 || p === only) render(cv.getContext("2d"), W/P.w, p, "thumb");
   }
   $("sheetsTitle").textContent = `Hojas (${state.pages})`;
 }
@@ -538,33 +620,44 @@ function seg(el, items, key){
     const b = document.createElement("button");
     b.textContent = it.label; b.setAttribute("aria-pressed", state[key] === it.id);
     b.onclick = () => {
-      if (key === "layout"){
-        const first = state.page*perPage();
-        state[key] = it.id;
-        state.pages = 1; fitPages();
-        state.page = Math.min(Math.floor(first/perPage()), state.pages-1);
-        state.sel = -1; state.moving = -1;
-      } else state[key] = it.id;
+      if (state[key] === it.id) return;
+      relayout(() => { state[key] = it.id; });
+      if (key === "capAuto"){ applyAutoCaptions(); resolvePlaces(); }
       buildUI(); draw();
     };
     el.appendChild(b);
   });
 }
+// Si el cambio hace que entren otra cantidad de fotos por hoja, se reparten de nuevo
+// manteniendo a la vista la primera foto de la hoja actual
+function relayout(apply){
+  const before = perPage(), first = state.page*before;
+  apply();
+  const n = perPage();
+  if (n === before) return;
+  state.pages = 1; fitPages();
+  state.page = Math.min(Math.floor(first/n), state.pages-1);
+  state.sel = -1; state.moving = -1;
+}
 function buildUI(){
-  seg($("layoutSeg"), LAYOUTS, "layout"); seg($("styleSeg"), STYLES, "style");
-  seg($("bgSeg"), BGS, "bg"); seg($("posSeg"), POS, "capPos");
+  seg($("paperSeg"), PAPERS, "paper"); seg($("orientSeg"), ORIENTS, "orient");
+  seg($("layoutSeg"), LAYOUTS, "layout"); seg($("sizeSeg"), SIZES, "layout");
+  seg($("styleSeg"), STYLES, "style");
+  seg($("bgSeg"), BGS, "bg"); seg($("posSeg"), POS, "capPos"); seg($("autoSeg"), AUTOCAP, "capAuto");
+  $("placeHint").hidden = state.capAuto === "year";
   $("marginOut").textContent = state.margin + " mm"; $("gapOut").textContent = state.gap + " mm";
   updateToolbar();
 }
-["margin","gap"].forEach(k => $(k).oninput = e => { state[k] = parseFloat(e.target.value); buildUI(); draw(); });
+["margin","gap"].forEach(k => $(k).oninput = e => { relayout(() => { state[k] = parseFloat(e.target.value); }); buildUI(); draw(); });
 $("cuts").onchange = e => { state.cuts = e.target.checked; draw(); };
 $("captions").onchange = e => { state.captions = e.target.checked; updateToolbar(); draw(); };
 
 /* ---------- carga de fotos ---------- */
-async function readExifDate(file){
+// Lee del EXIF la fecha en que se sacó la foto y, si la tiene, la ubicación GPS
+async function readExif(file){
   try {
     const v = new DataView(await file.slice(0, 256*1024).arrayBuffer());
-    if (v.getUint16(0) !== 0xFFD8) return null;
+    if (v.getUint16(0) !== 0xFFD8) return {date:null, gps:null};
     let o = 2;
     while (o < v.byteLength - 10){
       const mk = v.getUint16(o), len = v.getUint16(o+2);
@@ -573,7 +666,7 @@ async function readExifDate(file){
       o += 2 + len;
     }
   } catch(_){}
-  return null;
+  return {date:null, gps:null};
 }
 function parseTiff(v, t){
   const le = v.getUint16(t) === 0x4949;
@@ -584,7 +677,78 @@ function parseTiff(v, t){
   let d = null;
   if (ifd0[0x8769]){ const ex = ifd(t + u32(ifd0[0x8769].val)); if (ex[0x9003]) d = str(ex[0x9003]); }
   if (!d && ifd0[0x0132]) d = str(ifd0[0x0132]);
-  return d && /^\d{4}:\d{2}:\d{2}/.test(d) && !d.startsWith("0000") ? d : null;
+  const date = d && /^\d{4}:\d{2}:\d{2}/.test(d) && !d.startsWith("0000") ? d : null;
+  let gps = null;
+  try {
+    if (ifd0[0x8825]){
+      const G = ifd(t + u32(ifd0[0x8825].val));
+      // grados, minutos y segundos guardados como 3 fracciones
+      const dms = tag => { const off = t + u32(tag.val); let r = 0; for (let i = 0; i < 3; i++){ const den = u32(off+i*8+4); r += (den ? u32(off+i*8)/den : 0) / Math.pow(60, i); } return r; };
+      const ref = tag => String.fromCharCode(v.getUint8(tag.val));
+      if (G[2] && G[4]){
+        let lat = dms(G[2]), lon = dms(G[4]);
+        if (G[1] && ref(G[1]) === "S") lat = -lat;
+        if (G[3] && ref(G[3]) === "W") lon = -lon;
+        if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && (lat || lon)) gps = {lat:+lat.toFixed(5), lon:+lon.toFixed(5)};
+      }
+    }
+  } catch(_){}
+  return {date, gps};
+}
+
+/* ---------- texto automático: año, lugar o ambos ---------- */
+function autoText(sl){
+  const year = sl.date ? sl.date.slice(0,4) : "", place = sl.place || "";
+  if (state.capAuto === "place") return place || year;
+  if (state.capAuto === "both") return [place, year].filter(Boolean).join(" ");
+  return year;
+}
+// Actualiza el texto de las fotos que no fueron escritas a mano
+function applyAutoCaptions(){ state.slots.forEach(sl => { if (sl && sl.autoCap !== false) sl.caption = autoText(sl); }); }
+
+// Nombre del lugar a partir de las coordenadas (OpenStreetMap / Nominatim).
+// Se pide de a una por segundo como exige su política de uso y se recuerda por zona (~1 km).
+const placeCache = new Map();
+let geoRunning = false;
+const geoKey = g => g.lat.toFixed(2) + "," + g.lon.toFixed(2);
+async function reverseGeocode(g){
+  const u = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=es&lat=${g.lat}&lon=${g.lon}`;
+  const res = await fetch(u, {headers:{"Accept":"application/json"}});
+  if (!res.ok) throw new Error("geo " + res.status);
+  const j = await res.json(), a = j.address || {};
+  return a.city || a.town || a.village || a.municipality || a.county || a.state || "";
+}
+async function resolvePlaces(){
+  if (geoRunning || state.capAuto === "year") return;
+  const todo = state.slots.filter(sl => sl && sl.gps && sl.place == null);
+  if (!todo.length) return;
+  geoRunning = true;
+  let asked = 0, failed = false;
+  const keys = [...new Set(todo.map(sl => geoKey(sl.gps)))];
+  try {
+    for (let i = 0; i < keys.length; i++){
+      if (state.capAuto === "year") break;
+      const k = keys[i];
+      let name = placeCache.get(k);
+      if (name === undefined){
+        if (!navigator.onLine){ failed = true; break; }
+        statusLock = true; $("status").textContent = `Buscando lugares… ${i+1} de ${keys.length}`;
+        if (asked++) await new Promise(r => setTimeout(r, 1100));
+        const sample = todo.find(sl => geoKey(sl.gps) === k);
+        try { name = await reverseGeocode(sample.gps); } catch(_){ failed = true; break; }
+        placeCache.set(k, name);
+      }
+      state.slots.forEach(sl => {
+        if (sl && sl.gps && sl.place == null && geoKey(sl.gps) === k){ sl.place = name; if (sl.autoCap !== false) sl.caption = autoText(sl); }
+      });
+      draw("page");
+    }
+  } finally {
+    geoRunning = false; statusLock = false; updateToolbar(); draw();
+    if (failed) say("No se pudieron buscar algunos lugares (¿sin conexión?). Se reintenta al cargar más fotos o al volver a elegir Lugar.", 5000);
+  }
+  // si mientras tanto se cargaron más fotos con GPS, seguir con esas
+  if (!failed && state.slots.some(sl => sl && sl.gps && sl.place == null)) resolvePlaces();
 }
 const isHeic = f => /image\/hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
 // Las fotos HEIC del iPhone solo las abre Safari: en el resto se convierten con heic2any (se descarga solo si hace falta)
@@ -605,7 +769,7 @@ async function toImage(blob){
   finally { URL.revokeObjectURL(url); }
 }
 async function loadFile(file){
-  const date = await readExifDate(file);
+  const {date, gps} = await readExif(file);
   let img;
   try { img = await toImage(file); }
   catch(err){
@@ -624,7 +788,9 @@ async function loadFile(file){
   const {thumb, thumbBlob} = await makeThumb(c);
   const w = c.width, h = c.height;
   c.width = c.height = 0; // libera la memoria del canvas grande enseguida
-  return {id:newId("f"), blob, thumb, thumbBlob, w, h, fx:.5, fy:.5, zoom:1, rot:0, date, caption: date ? date.slice(0,4) : "", pos:null, name:file.name};
+  const sl = {id:newId("f"), blob, thumb, thumbBlob, w, h, fx:.5, fy:.5, zoom:1, rot:0, date, gps, place:null, autoCap:true, caption:"", pos:null, name:file.name};
+  sl.caption = autoText(sl);
+  return sl;
 }
 const isImage = f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name);
 let loadingFiles = false;
@@ -652,6 +818,7 @@ async function addFiles(fileList){
   fitPages();
   draw();
   say(`Listo: ${loaded.length} ${loaded.length === 1 ? "foto" : "fotos"} en ${state.pages} ${state.pages === 1 ? "hoja" : "hojas"}${fail ? ` (${fail} no se pudieron abrir)` : ""}.`, 4000);
+  setTimeout(resolvePlaces, 2500); // deja leer el aviso antes de mostrar "Buscando lugares…"
 }
 $("folderBtn").onclick = () => $("fileFolder").click();
 $("addBtn").onclick = () => $("fileMulti").click();
@@ -662,7 +829,7 @@ $("fileOne").onchange = async e => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || targetIndex < 0) return;
   const at = targetIndex;
-  try { const sl = await loadFile(f); pushUndo(); state.slots[at] = sl; state.sel = at; fitPages(); } catch(_){ say("No se pudo abrir esa imagen."); }
+  try { const sl = await loadFile(f); pushUndo(); state.slots[at] = sl; state.sel = at; fitPages(); resolvePlaces(); } catch(_){ say("No se pudo abrir esa imagen."); }
   updateToolbar(); draw();
 };
 $("sortBtn").onclick = () => {
@@ -713,10 +880,24 @@ function updateToolbar(){
   if (document.activeElement !== cap) cap.value = s.caption || "";
   cap.parentElement.style.display = state.captions ? "" : "none";
   $("capPosOne").value = s.pos || "";
-  $("dateInfo").textContent = s.date ? "Fecha guardada en la foto: " + fmtDate(s.date) : "Esta foto no tiene fecha guardada (pasa seguido con fotos de WhatsApp o capturas).";
+  const lines = [s.date ? "Fecha guardada en la foto: " + fmtDate(s.date) : "Esta foto no tiene fecha guardada (pasa seguido con fotos de WhatsApp o capturas)."];
+  if (s.place) lines.push("Lugar: " + s.place);
+  else if (s.gps && state.capAuto !== "year") lines.push("Buscando el lugar…");
+  else if (!s.gps && state.capAuto !== "year") lines.push("Esta foto no tiene ubicación guardada.");
+  $("dateInfo").textContent = lines.join(" · ");
+  // resolución con la que va a salir impresa
+  const li = state.sel - state.page*perPage(), cell = cells()[li];
+  const ri = $("resInfo");
+  if (cell){
+    const dpi = Math.round(dpiOf(s, cell)), low = dpi < LOW_DPI;
+    ri.textContent = low
+      ? `⚠ Calidad de impresión baja (${dpi} ppp): se puede ver pixelada. ${s.zoom > 1 ? "Alejala, usá" : "Usá"} un tamaño más chico o una foto con más resolución.`
+      : `Calidad de impresión: ${dpi >= 250 ? "muy buena" : "buena"} (${dpi} ppp).`;
+    ri.classList.toggle("warn", low);
+  } else ri.textContent = "";
 }
 $("caption").addEventListener("focus", () => { if (slot(state.sel)) pushUndo(); });
-$("caption").addEventListener("input", e => { const s = slot(state.sel); if (s){ s.caption = e.target.value; draw("page"); } });
+$("caption").addEventListener("input", e => { const s = slot(state.sel); if (s){ s.caption = e.target.value; s.autoCap = false; draw("page"); } });
 $("capPosOne").addEventListener("change", e => { const s = slot(state.sel); if (s){ pushUndo(); s.pos = e.target.value || null; draw("page"); } });
 $("toolbar").onclick = e => {
   const act = e.target.dataset.act; if (!act) return;
@@ -736,7 +917,7 @@ $("toolbar").onclick = e => {
 let drag = null;
 function hit(ev){
   const r = preview.getBoundingClientRect();
-  const mx = (ev.clientX - r.left) / r.width * A4.w, my = (ev.clientY - r.top) / r.height * A4.h;
+  const P = paper(), mx = (ev.clientX - r.left) / r.width * P.w, my = (ev.clientY - r.top) / r.height * P.h;
   const li = cells().findIndex(c => mx >= c.x && mx <= c.x+c.w && my >= c.y && my <= c.y+c.h);
   return li < 0 ? -1 : state.page*perPage() + li;
 }
@@ -756,7 +937,7 @@ preview.addEventListener("pointermove", ev => {
   if (!drag.moved) pushUndo();
   drag.moved = true;
   state.sel = drag.gi;
-  const r = preview.getBoundingClientRect(), s = r.width / A4.w;
+  const r = preview.getBoundingClientRect(), s = r.width / paper().w;
   const g = geom(sl, photoRect(cells()[drag.gi - state.page*perPage()]), s);
   if (g.ex > 0) sl.fx = Math.min(1, Math.max(0, sl.fx - dx/g.ex));
   if (g.ey > 0) sl.fy = Math.min(1, Math.max(0, sl.fy - dy/g.ey));
@@ -782,8 +963,10 @@ async function pageCanvas(p){
     const f = fullCache.get(sl.id);
     try { hi.set(sl.id, f || await createImageBitmap(sl.blob)); } catch(_){}
   }
-  const c = document.createElement("canvas"); c.width = 2480; c.height = 3508;
-  render(c.getContext("2d"), 2480/A4.w, p, false, hi);
+  // 300 ppp: A4 vertical = 2480 × 3508 px
+  const P = paper(), c = document.createElement("canvas");
+  c.width = Math.round(P.w/25.4*300); c.height = Math.round(P.h/25.4*300);
+  render(c.getContext("2d"), c.width/P.w, p, false, hi);
   hi.forEach((b, id) => { if (fullCache.get(id) !== b) b.close(); });
   return c;
 }
@@ -814,15 +997,16 @@ $("jpgBtn").onclick = async () => {
 async function buildPdf(){
   try { await document.fonts.load("500 40px Caveat"); } catch(_){}
   const pages = [...Array(state.pages).keys()].filter(p => countOn(p) > 0);
-  const pdf = new window.jspdf.jsPDF({unit:"mm", format:"a4", orientation:"portrait"});
+  const P = paper(), orient = P.w > P.h ? "landscape" : "portrait";
+  const pdf = new window.jspdf.jsPDF({unit:"mm", format:[P.w, P.h], orientation:orient});
   let firstCanvas = null;
   try {
     for (let i = 0; i < pages.length; i++){
       statusLock = true; $("status").textContent = `Preparando hoja ${i+1} de ${pages.length}…`;
       await new Promise(r => setTimeout(r, 0));
       const c = await pageCanvas(pages[i]);
-      if (i > 0) pdf.addPage("a4", "portrait");
-      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, A4.w, A4.h, undefined, "FAST");
+      if (i > 0) pdf.addPage([P.w, P.h], orient);
+      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, P.w, P.h, undefined, "FAST");
       if (!firstCanvas) firstCanvas = c; else c.width = c.height = 0; // libera memoria (importante en iPhone)
     }
   } finally { statusLock = false; draw(); }
@@ -888,8 +1072,8 @@ const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = (
 
 function record(){
   return {id:proj.id, name:proj.name, created:proj.created,
-    settings:{layout:state.layout, style:state.style, bg:state.bg, margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos, pages:state.pages},
-    slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h} : null)};
+    settings:{paper:state.paper, orient:state.orient, layout:state.layout, capAuto:state.capAuto, style:state.style, bg:state.bg, margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos, pages:state.pages},
+    slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, autoCap:sl.autoCap, gps:sl.gps || null, place:sl.place ?? null, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h} : null)};
 }
 // Los guardados se encolan: nunca corren dos a la vez y "Guardar ahora" no se pierde
 let saveChain = Promise.resolve();
@@ -932,7 +1116,7 @@ function showSaveInfo(msg){
 async function listProjects(){ const d = await db(); return (await reqP(d.transaction("projects").objectStore("projects").getAll())).sort((a,b) => b.updated - a.updated); }
 
 function applySettings(st){
-  Object.assign(state, {layout:st.layout||"12", style:st.style||"polaroid", bg:st.bg||"#ffffff", margin:st.margin ?? 5, gap:st.gap ?? 3,
+  Object.assign(state, {paper:st.paper||"a4", orient:st.orient||"v", layout:ALL_LAYOUTS.some(l => l.id === st.layout) ? st.layout : "12", capAuto:st.capAuto||"year", style:st.style||"polaroid", bg:st.bg||"#ffffff", margin:st.margin ?? 5, gap:st.gap ?? 3,
     cuts:st.cuts ?? true, captions:st.captions ?? true, capPos:st.capPos||"br", pages:st.pages||1});
   $("margin").value = state.margin; $("gap").value = state.gap;
   $("cuts").checked = state.cuts; $("captions").checked = state.captions;
@@ -972,7 +1156,9 @@ async function openProject(id){
         full.close(); dirty = true;
       }
       const {photoId, ...rest} = s;
-      slots.push({...rest, id:photoId, blob:ph.blob, thumb, thumbBlob, w, h, dirty});
+      // proyectos anteriores: el texto es automático si coincide con el año de la foto
+      const autoCap = rest.autoCap ?? ((rest.caption || "") === (rest.date ? rest.date.slice(0,4) : ""));
+      slots.push({gps:null, place:null, ...rest, autoCap, id:photoId, blob:ph.blob, thumb, thumbBlob, w, h, dirty});
     } catch(_){ slots.push(null); }
     if (++done % 10 === 0){ $("status").textContent = `Abriendo proyecto… ${done} de ${total}`; await new Promise(r => setTimeout(r, 0)); }
   }
@@ -984,6 +1170,7 @@ async function openProject(id){
   $("projName").value = proj.name;
   lastSig = JSON.stringify(record()); lastSavedAt = new Date(rec.updated);
   statusLock = false; buildUI(); draw(); showSaveInfo();
+  resolvePlaces();
 }
 async function deleteProject(id){
   const d = await db();
