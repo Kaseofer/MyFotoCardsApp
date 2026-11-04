@@ -175,6 +175,8 @@ canvas#preview.grab{touch-action:none}
       <div class="group"><span class="glabel">Fotos por hoja</span><div class="seg" id="layoutSeg"></div></div>
       <div class="group"><span class="glabel">O un tamaño fijo de foto (cm)</span><div class="seg" id="sizeSeg"></div>
         <p class="hint">Entran las que quepan en la hoja, en tamaño real.</p></div>
+      <div class="group"><span class="glabel">Forma de las fotos</span><div class="seg" id="shapeSeg"></div>
+        <p class="hint" id="shapeHint"></p></div>
       <div class="group"><span class="glabel">Estilo</span><div class="seg" id="styleSeg"></div></div>
       <div class="group"><span class="glabel">Fondo de la hoja</span><div class="seg" id="bgSeg"></div></div>
       <div class="group">
@@ -285,6 +287,8 @@ const SIZES = [
   {id:"s4x4", fw:40, fh:40, label:"4×4 carnet"}
 ];
 const ALL_LAYOUTS = [...LAYOUTS, ...SIZES];
+// Forma de cada foto: automática (llenan el espacio), apaisadas 3:2 o verticales 2:3
+const SHAPES = [{id:"auto", label:"Automática"}, {id:"h", label:"Apaisadas"}, {id:"v", label:"Verticales"}];
 const AUTOCAP = [{id:"year", label:"Año"}, {id:"place", label:"Lugar"}, {id:"both", label:"Lugar y año"}];
 const LOW_DPI = 150; // por debajo de esto la foto impresa se puede ver pixelada
 function paper(){
@@ -297,7 +301,7 @@ const POS = [
   {id:"br", label:"Abajo derecha"}, {id:"bl", label:"Abajo izquierda"}, {id:"bc", label:"Abajo centro"},
   {id:"tr", label:"Arriba derecha"}, {id:"tl", label:"Arriba izquierda"}, {id:"marco", label:"En el marco"}
 ];
-const state = {paper:"a4", orient:"v", layout:"12", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br", capAuto:"year",
+const state = {paper:"a4", orient:"v", layout:"12", shape:"auto", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br", capAuto:"year",
   slots:[], pages:1, page:0, sel:-1, moving:-1, flash:[]};
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -334,21 +338,44 @@ function grid(){
   const L = ALL_LAYOUTS.find(l => l.id === state.layout) || LAYOUTS[2];
   const AW = P.w - 2*m, AH = P.h - 2*m;
   if (!L.fw){
-    let c = L.c, r = L.r;
-    if (P.w > P.h) [c, r] = [r, c]; // en horizontal se dan vuelta filas y columnas
-    return {c, r, w:(AW-(c-1)*g)/c, h:(AH-(r-1)*g)/r, x0:m, y0:m, fixed:false};
+    if (state.shape === "auto"){
+      let c = L.c, r = L.r;
+      if (P.w > P.h) [c, r] = [r, c]; // en horizontal se dan vuelta filas y columnas
+      return {c, r, w:(AW-(c-1)*g)/c, h:(AH-(r-1)*g)/r, x0:m, y0:m, fixed:false};
+    }
+    // Forma elegida: misma cantidad de fotos, con las filas y columnas que dejen las fotos más grandes
+    const n = L.c*L.r, A = cellAspect(state.shape === "h" ? 3/2 : 2/3);
+    let best = null;
+    for (let c = 1; c <= n; c++){
+      if (n % c) continue;
+      const r = n / c, gw = (AW-(c-1)*g)/c, gh = (AH-(r-1)*g)/r;
+      if (gw <= 0 || gh <= 0) continue;
+      const w = Math.min(gw, gh*A), h = w/A;
+      if (!best || w*h > best.w*best.h + 1e-9) best = {c, r, w, h};
+    }
+    const usedW = best.c*best.w + (best.c-1)*g, usedH = best.r*best.h + (best.r-1)*g;
+    return {...best, x0:m + (AW-usedW)/2, y0:m + (AH-usedH)/2, fixed:false};
   }
   const fit = (w, h) => ({c:Math.floor((AW+g+1e-6)/(w+g)), r:Math.floor((AH+g+1e-6)/(h+g)), w, h});
-  const a = fit(L.fw, L.fh), b = fit(L.fh, L.fw);
-  let best = b.c*b.r > a.c*a.r ? b : a, shrunk = false;
+  const a = fit(L.fw, L.fh), b = fit(L.fh, L.fw); // a: parada · b: acostada
+  const square = L.fw === L.fh;
+  let best = square || state.shape === "auto" ? (b.c*b.r > a.c*a.r ? b : a) : state.shape === "h" ? b : a, shrunk = false;
   if (!best.c || !best.r){
     // No entra ni una en tamaño real: una sola, lo más grande posible con esa proporción
     const k1 = Math.min(AW/L.fw, AH/L.fh), k2 = Math.min(AW/L.fh, AH/L.fw);
-    best = k1 >= k2 ? {c:1, r:1, w:L.fw*k1, h:L.fh*k1} : {c:1, r:1, w:L.fh*k2, h:L.fw*k2};
+    const useB = square || state.shape === "auto" ? k2 > k1 : state.shape === "h";
+    best = useB ? {c:1, r:1, w:L.fh*k2, h:L.fw*k2} : {c:1, r:1, w:L.fw*k1, h:L.fh*k1};
     shrunk = true;
   }
   const usedW = best.c*best.w + (best.c-1)*g, usedH = best.r*best.h + (best.r-1)*g;
   return {...best, x0:m + (AW-usedW)/2, y0:m + (AH-usedH)/2, fixed:true, shrunk, label:L.label};
+}
+// Proporción que tiene que tener el espacio para que la FOTO (sin el marco) quede con proporción R (ancho/alto).
+// Sale de photoRect: polaroid deja 6 % de borde y 2,8 veces más abajo; borde fino 3,5 % parejo.
+function cellAspect(R){
+  if (state.style === "polaroid") return R >= 1 ? 0.772*R + 0.12 : 1 / (0.88/R + 0.228);
+  if (state.style === "borde") return R >= 1 ? 0.93*R + 0.07 : 1 / (0.93/R + 0.07);
+  return R;
 }
 function cells(){
   const G = grid(), g = state.gap, out = [];
@@ -521,7 +548,7 @@ function statusText(){
   const G = grid(), cm = v => (v/10).toFixed(1).replace(/\.0$/, "").replace(".", ",");
   let size = G.fixed && !G.shrunk ? `fotos de ${G.label} cm`
     : G.shrunk ? `${G.label} cm no entra: se achicó a ${cm(G.w)} × ${cm(G.h)} cm`
-    : `cada espacio mide ${cm(G.w)} × ${cm(G.h)} cm`;
+    : (pr => `cada foto mide ${cm(pr.w)} × ${cm(pr.h)} cm`)(photoRect({x:0, y:0, w:G.w, h:G.h}));
   let t = `${countOn(state.page)} de ${perPage()} fotos en esta hoja · ${size}`;
   const low = lowResOn(state.page);
   if (low) t += ` · ⚠ ${low} ${low === 1 ? "foto puede salir pixelada" : "fotos pueden salir pixeladas"}`;
@@ -650,7 +677,10 @@ function relayout(apply){
 }
 function buildUI(){
   seg($("paperSeg"), PAPERS, "paper"); seg($("orientSeg"), ORIENTS, "orient");
-  seg($("layoutSeg"), LAYOUTS, "layout"); seg($("sizeSeg"), SIZES, "layout");
+  seg($("layoutSeg"), LAYOUTS, "layout"); seg($("sizeSeg"), SIZES, "layout"); seg($("shapeSeg"), SHAPES, "shape");
+  $("shapeHint").textContent = state.shape === "h" ? "Más anchas que altas (3:2, como salen de la cámara), aunque la hoja esté parada."
+    : state.shape === "v" ? "Más altas que anchas (2:3), aunque la hoja esté acostada."
+    : "Las fotos ocupan todo el espacio disponible.";
   seg($("styleSeg"), STYLES, "style");
   seg($("bgSeg"), BGS, "bg"); seg($("posSeg"), POS, "capPos"); seg($("autoSeg"), AUTOCAP, "capAuto");
   $("placeHint").hidden = state.capAuto === "year";
@@ -1166,7 +1196,7 @@ const LS_LAST = "mfc-ultimo-proyecto", LS_CONFIG = "mfc-configuracion";
 function remember(k, v){ try { localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); } catch(_){} }
 function recall(k){ try { return localStorage.getItem(k); } catch(_){ return null; } }
 function currentSettings(){
-  return {paper:state.paper, orient:state.orient, layout:state.layout, capAuto:state.capAuto, style:state.style, bg:state.bg,
+  return {paper:state.paper, orient:state.orient, layout:state.layout, shape:state.shape, capAuto:state.capAuto, style:state.style, bg:state.bg,
     margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos};
 }
 function rememberSettings(){ remember(LS_CONFIG, currentSettings()); }
@@ -1174,7 +1204,7 @@ function lastSettings(){ try { return JSON.parse(recall(LS_CONFIG) || "null") ||
 async function listProjects(){ const d = await db(); return (await reqP(d.transaction("projects").objectStore("projects").getAll())).sort((a,b) => b.updated - a.updated); }
 
 function applySettings(st){
-  Object.assign(state, {paper:st.paper||"a4", orient:st.orient||"v", layout:ALL_LAYOUTS.some(l => l.id === st.layout) ? st.layout : "12", capAuto:st.capAuto||"year", style:st.style||"polaroid", bg:st.bg||"#ffffff", margin:st.margin ?? 5, gap:st.gap ?? 3,
+  Object.assign(state, {paper:st.paper||"a4", orient:st.orient||"v", layout:ALL_LAYOUTS.some(l => l.id === st.layout) ? st.layout : "12", shape:SHAPES.some(x => x.id === st.shape) ? st.shape : "auto", capAuto:st.capAuto||"year", style:st.style||"polaroid", bg:st.bg||"#ffffff", margin:st.margin ?? 5, gap:st.gap ?? 3,
     cuts:st.cuts ?? true, captions:st.captions ?? true, capPos:st.capPos||"br", pages:st.pages||1});
   $("margin").value = state.margin; $("gap").value = state.gap;
   $("cuts").checked = state.cuts; $("captions").checked = state.captions;

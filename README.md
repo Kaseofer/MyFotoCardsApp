@@ -33,6 +33,7 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/ — se puede agregar a l
 ## Hojas, tamaños y textos
 
 - **Hoja:** A4, Carta o papel foto 10×15, en vertical u horizontal.
+- **Forma de las fotos:** Automática (llenan el espacio), **Apaisadas** (3:2, más anchas que altas, aunque la hoja esté parada) o **Verticales** (2:3). Se mantiene la cantidad por hoja y se eligen las filas y columnas que dejan las fotos más grandes; el marco se descuenta para que la foto en sí quede en 3:2.
 - **Fotos por hoja** (8 a 20, llenan la hoja) **o tamaño fijo** en cm: 13×18, 10×15, 9×13, 6×9 y 4×4 carnet. Con tamaño fijo entran las que quepan, centradas y en tamaño real; si no entra ninguna, se achica y lo avisa.
 - **Texto automático:** año, lugar o lugar y año. El lugar sale del GPS guardado en la foto y se consulta a [OpenStreetMap (Nominatim)](https://nominatim.org/) **solo si se elige Lugar**: se envían las coordenadas, nunca las fotos. Se pide de a una por segundo y se recuerda por zona. Un texto escrito a mano no se pisa.
 - **Aviso de baja resolución:** las fotos que saldrían impresas a menos de 150 ppp muestran una marca naranja (solo en pantalla) y la barra de la foto dice la calidad.
