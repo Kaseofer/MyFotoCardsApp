@@ -55,7 +55,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .pager button:disabled{opacity:.35;cursor:default}
 .pager .pnum{font-weight:600;min-width:110px;text-align:center;font-variant-numeric:tabular-nums}
 .sheet-box{display:flex;justify-content:center;overflow:hidden;padding:4px 0 10px}
-canvas#preview{width:100%;max-width:min(540px,calc((100vh - 200px) * 0.7071));aspect-ratio:210/297;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18),0 8px 28px rgba(0,0,0,.12);border-radius:2px;touch-action:none;cursor:pointer;display:block}
+canvas#preview{width:100%;max-width:min(540px,calc((100vh - 200px) * 0.7071));aspect-ratio:210/297;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18),0 8px 28px rgba(0,0,0,.12);border-radius:2px;touch-action:pan-y pinch-zoom;cursor:pointer;display:block}
+canvas#preview.grab{touch-action:none}
+.pager .undo{width:auto;border-radius:999px;font-size:.95rem;padding:0 14px}
+.tbhint{flex-basis:100%;text-align:center;color:var(--muted);font-size:.85rem}
 .movebar{display:none;margin:4px auto 8px;max-width:540px;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:9px 12px;align-items:center;gap:10px;justify-content:space-between}
 .movebar.on{display:flex}
 .movebar button{font:inherit;font-weight:600;border:0;border-radius:999px;padding:6px 12px;cursor:pointer;background:var(--accent-ink);color:var(--accent)}
@@ -172,10 +175,12 @@ canvas#preview{width:100%;max-width:min(540px,calc((100vh - 200px) * 0.7071));as
       <button id="prevBtn" aria-label="Hoja anterior">‹</button>
       <div class="pnum" id="pnum"></div>
       <button id="nextBtn" aria-label="Hoja siguiente">›</button>
+      <button id="undoBtn" class="undo" disabled>↶ Deshacer</button>
     </div>
     <div class="movebar" id="movebar"><span>Tocá el lugar donde va. Podés cambiar de hoja.</span><button id="moveCancel">Cancelar</button></div>
     <div class="sheet-box"><canvas id="preview" aria-label="Vista previa de la hoja A4"></canvas></div>
     <div class="toolbar" id="toolbar">
+      <div class="tbhint">Arrastrá la foto para encuadrarla. Tocala de nuevo para soltarla.</div>
       <button data-act="move" class="hl">Mover o intercambiar</button>
       <button data-act="rotate">Girar ↻</button>
       <button data-act="change">Cambiar foto</button>
@@ -246,6 +251,22 @@ const state = {layout:"12", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cut
   slots:[], pages:1, page:0, sel:-1, moving:-1, flash:[]};
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/* ---------- deshacer ---------- */
+const undoStack = [];
+function pushUndo(){
+  undoStack.push({slots: state.slots.map(sl => sl && {...sl}), pages: state.pages, page: state.page});
+  if (undoStack.length > 40) undoStack.shift();
+  document.getElementById("undoBtn").disabled = false;
+}
+function undo(){
+  const u = undoStack.pop();
+  if (!u){ say("No hay nada para deshacer."); return; }
+  state.slots = u.slots; state.pages = u.pages; fitPages();
+  state.page = Math.min(u.page, state.pages-1); state.sel = -1; state.moving = -1;
+  updateToolbar(); draw(); say("Listo, se deshizo el último cambio.");
+}
+function clearUndo(){ undoStack.length = 0; }
+
 const $ = id => document.getElementById(id);
 const preview = $("preview"), pctx = preview.getContext("2d");
 
@@ -272,14 +293,56 @@ function photoRect(cell){
 }
 function geom(sl, pr, s){
   const turned = (sl.rot||0) % 180 !== 0;
-  const iw = turned ? sl.src.height : sl.src.width, ih = turned ? sl.src.width : sl.src.height;
+  const iw = turned ? sl.h : sl.w, ih = turned ? sl.w : sl.h;
   const pw = pr.w*s, ph = pr.h*s, sc = Math.max(pw/iw, ph/ih) * sl.zoom;
   const dw = iw*sc, dh = ih*sc;
   return {dw, dh, ex:dw-pw, ey:dh-ph, sc};
 }
 
+/* ---------- imágenes en memoria ----------
+   Cada foto guarda siempre una miniatura chica (sl.thumb). La versión completa
+   solo se decodifica para la hoja visible y para exportar, así un proyecto con
+   cientos de fotos no agota la memoria del teléfono. */
+const FULL = 1600, THUMB = 360;
+const fullCache = new Map(), fullLoading = new Set();
+function pageSlots(p){ const n = perPage(), out = []; for (let i = p*n; i < (p+1)*n; i++){ const sl = slot(i); if (sl) out.push(sl); } return out; }
+async function makeThumb(src){
+  const k = Math.min(1, THUMB / Math.max(src.width, src.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(src.width*k)); c.height = Math.max(1, Math.round(src.height*k));
+  c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+  const thumbBlob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+  const thumb = await createImageBitmap(c);
+  c.width = c.height = 0;
+  return {thumb, thumbBlob};
+}
+function wantFull(){
+  for (const sl of pageSlots(state.page)){
+    const b = fullCache.get(sl.id);
+    if (b){ fullCache.delete(sl.id); fullCache.set(sl.id, b); continue; }
+    if (fullLoading.has(sl.id)) continue;
+    fullLoading.add(sl.id);
+    createImageBitmap(sl.blob)
+      .then(bmp => { fullCache.set(sl.id, bmp); trimFull(); draw("preview"); })
+      .catch(() => {})
+      .finally(() => fullLoading.delete(sl.id));
+  }
+}
+function trimFull(){
+  const keep = new Set(pageSlots(state.page).map(sl => sl.id)), cap = perPage() + 6;
+  for (const [id, b] of fullCache){
+    if (fullCache.size <= cap) break;
+    if (!keep.has(id)){ b.close(); fullCache.delete(id); }
+  }
+}
+function releaseImages(){
+  fullCache.forEach(b => b.close()); fullCache.clear();
+  state.slots.forEach(sl => { if (sl && sl.thumb && sl.thumb.close) sl.thumb.close(); });
+}
+
 /* ---------- dibujo ---------- */
-function render(ctx, s, page, ui){
+// hi: Map opcional id → imagen completa (para exportar)
+function render(ctx, s, page, ui, hi){
   const n = perPage(), cs = cells();
   ctx.save();
   ctx.fillStyle = state.bg; ctx.fillRect(0,0,A4.w*s,A4.h*s);
@@ -293,8 +356,9 @@ function render(ctx, s, page, ui){
       const x0 = pr.x*s - g.ex*sl.fx, y0 = pr.y*s - g.ey*sl.fy;
       ctx.translate(x0 + g.dw/2, y0 + g.dh/2);
       ctx.rotate((sl.rot||0) * Math.PI/180);
-      const w = sl.src.width*g.sc, h = sl.src.height*g.sc;
-      ctx.drawImage(sl.src, -w/2, -h/2, w, h);
+      const src = (hi && hi.get(sl.id)) || (ui === "full" && fullCache.get(sl.id)) || sl.thumb;
+      const w = sl.w*g.sc, h = sl.h*g.sc;
+      ctx.drawImage(src, -w/2, -h/2, w, h);
       ctx.restore();
       if (state.captions && sl.caption) drawCaption(ctx, s, sl, cell, pr);
     } else if (ui){
@@ -344,7 +408,8 @@ function drawCaption(ctx, s, sl, cell, pr){
   ctx.fillStyle = "#fff"; ctx.fillText(sl.caption, x, y);
 }
 
-function draw(){
+// mode: "preview" solo la hoja grande · "page" también su miniatura · sin valor todo
+function draw(mode){
   const dpr = window.devicePixelRatio || 1, cw = preview.clientWidth || 300;
   const W = Math.round(cw*dpr), H = Math.round(cw*dpr*A4.h/A4.w);
   if (preview.width !== W || preview.height !== H){ preview.width = W; preview.height = H; }
@@ -355,15 +420,27 @@ function draw(){
   $("movebar").classList.toggle("on", state.moving >= 0);
   const c = cells()[0];
   if (!statusLock) $("status").textContent = `${countOn(state.page)} de ${perPage()} fotos en esta hoja · cada espacio mide ${c.w.toFixed(1)} × ${c.h.toFixed(1)} mm`;
-  scheduleThumbs();
+  $("undoBtn").disabled = !undoStack.length;
+  if (mode !== "preview") scheduleThumbs(mode !== "page");
+  wantFull();
 }
 let statusLock = false;
 function say(msg, ms=2500){ statusLock = true; $("status").textContent = msg; clearTimeout(say.t); say.t = setTimeout(() => { statusLock = false; draw(); }, ms); }
 
 /* ---------- miniaturas ---------- */
-let thumbsPending = false;
-function scheduleThumbs(){ if (thumbsPending) return; thumbsPending = true; requestAnimationFrame(() => { thumbsPending = false; buildThumbs($("thumbs"), 160); if ($("overview").classList.contains("on")) buildThumbs($("ovGrid"), 260); }); }
-function buildThumbs(container, px){
+// 0 nada pendiente · 1 solo la hoja actual · 2 todas
+let thumbsPending = 0;
+function scheduleThumbs(all){
+  const lvl = all ? 2 : 1;
+  if (thumbsPending){ thumbsPending = Math.max(thumbsPending, lvl); return; }
+  thumbsPending = lvl;
+  requestAnimationFrame(() => {
+    const only = thumbsPending === 1 ? state.page : -1; thumbsPending = 0;
+    buildThumbs($("thumbs"), 160, only);
+    if ($("overview").classList.contains("on")) buildThumbs($("ovGrid"), 260, only);
+  });
+}
+function buildThumbs(container, px, only = -1){
   const dpr = window.devicePixelRatio || 1;
   while (container.children.length > state.pages) container.lastChild.remove();
   for (let p = 0; p < state.pages; p++){
@@ -381,8 +458,9 @@ function buildThumbs(container, px){
     b.querySelector("span").textContent = `Hoja ${p+1} · ${k} ${k === 1 ? "foto" : "fotos"}`;
     b.setAttribute("aria-label", `Ir a la hoja ${p+1}`);
     const cv = b.querySelector("canvas"), W = Math.round(px*dpr), H = Math.round(W*A4.h/A4.w);
-    if (cv.width !== W){ cv.width = W; cv.height = H; }
-    render(cv.getContext("2d"), W/A4.w, p, "thumb");
+    const fresh = cv.width !== W;
+    if (fresh){ cv.width = W; cv.height = H; }
+    if (fresh || only < 0 || p === only) render(cv.getContext("2d"), W/A4.w, p, "thumb");
   }
   $("sheetsTitle").textContent = `Hojas (${state.pages})`;
 }
@@ -403,10 +481,12 @@ function goTo(p){
       {duration:300, easing:"cubic-bezier(.2,.8,.2,1)"});
   }
 }
+$("undoBtn").onclick = undo;
 $("prevBtn").onclick = () => goTo(state.page-1);
 $("nextBtn").onclick = () => goTo(state.page+1);
 document.addEventListener("keydown", e => {
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); return; }
   if (e.key === "ArrowRight") goTo(state.page+1);
   if (e.key === "ArrowLeft") goTo(state.page-1);
   if (e.key === "Escape"){ if (state.moving >= 0) cancelMove(); else closeOverview(); }
@@ -420,15 +500,17 @@ $("ovClose").onclick = closeOverview;
 
 /* ---------- hojas ---------- */
 $("addPageBtn").onclick = () => { state.pages++; goTo(state.pages-1); say("Hoja nueva agregada."); };
-let delArmed = false;
+let delArmed = false, delTimer = 0;
 $("delPageBtn").onclick = () => {
   const k = countOn(state.page);
+  clearTimeout(delTimer);
   if (k > 0 && !delArmed){
     delArmed = true; $("delPageBtn").textContent = `Tocá de nuevo para borrar (${k} fotos)`;
-    setTimeout(() => { delArmed = false; $("delPageBtn").textContent = "Eliminar esta hoja"; }, 3000);
+    delTimer = setTimeout(() => { delArmed = false; $("delPageBtn").textContent = "Eliminar esta hoja"; }, 3000);
     return;
   }
   delArmed = false; $("delPageBtn").textContent = "Eliminar esta hoja";
+  pushUndo();
   const n = perPage();
   state.slots.splice(state.page*n, n);
   state.pages = Math.max(1, state.pages-1);
@@ -491,42 +573,72 @@ function parseTiff(v, t){
   if (!d && ifd0[0x0132]) d = str(ifd0[0x0132]);
   return d && /^\d{4}:\d{2}:\d{2}/.test(d) && !d.startsWith("0000") ? d : null;
 }
+const isHeic = f => /image\/hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
+// Las fotos HEIC del iPhone solo las abre Safari: en el resto se convierten con heic2any (se descarga solo si hace falta)
+let heicLib = null;
+function loadHeicLib(){
+  if (!heicLib) heicLib = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+    s.onload = () => window.heic2any ? res(window.heic2any) : rej(new Error("heic2any"));
+    s.onerror = () => { heicLib = null; rej(new Error("heic2any")); };
+    document.head.appendChild(s);
+  });
+  return heicLib;
+}
+async function toImage(blob){
+  const url = URL.createObjectURL(blob);
+  try { return await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }); }
+  finally { URL.revokeObjectURL(url); }
+}
 async function loadFile(file){
   const date = await readExifDate(file);
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.naturalWidth*k); c.height = Math.round(img.naturalHeight*k);
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.9));
-    return {src:c, blob, id:newId("f"), saved:false, fx:.5, fy:.5, zoom:1, rot:0, date, caption: date ? date.slice(0,4) : "", pos:null, name:file.name};
-  } finally { URL.revokeObjectURL(url); }
+  let img;
+  try { img = await toImage(file); }
+  catch(err){
+    if (!isHeic(file)) throw err;
+    const heic2any = await loadHeicLib();
+    let jpg = await heic2any({blob:file, toType:"image/jpeg", quality:0.92});
+    if (Array.isArray(jpg)) jpg = jpg[0];
+    img = await toImage(jpg);
+  }
+  const k = Math.min(1, FULL / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.naturalWidth*k)); c.height = Math.max(1, Math.round(img.naturalHeight*k));
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.9));
+  if (!blob) throw new Error("toBlob");
+  const {thumb, thumbBlob} = await makeThumb(c);
+  const w = c.width, h = c.height;
+  c.width = c.height = 0; // libera la memoria del canvas grande enseguida
+  return {id:newId("f"), blob, thumb, thumbBlob, w, h, fx:.5, fy:.5, zoom:1, rot:0, date, caption: date ? date.slice(0,4) : "", pos:null, name:file.name};
 }
 const isImage = f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name);
+let loadingFiles = false;
 async function addFiles(fileList){
+  if (loadingFiles){ say("Esperá a que termine la carga anterior."); return; }
   const files = [...fileList].filter(isImage).sort((a,b) => a.name.localeCompare(b.name, "es", {numeric:true}));
   if (!files.length){ say("No encontré imágenes para cargar."); return; }
+  loadingFiles = true;
   const loaded = []; let fail = 0;
-  for (let i = 0; i < files.length; i++){
-    statusLock = true; $("status").textContent = `Cargando ${i+1} de ${files.length}…`;
-    try { loaded.push(await loadFile(files[i])); } catch(_){ fail++; }
-    await new Promise(r => setTimeout(r, 0));
-  }
+  try {
+    for (let i = 0; i < files.length; i++){
+      statusLock = true; $("status").textContent = `Cargando ${i+1} de ${files.length}…`;
+      try { loaded.push(await loadFile(files[i])); } catch(_){ fail++; }
+      await new Promise(r => setTimeout(r, 0));
+    }
+  } finally { loadingFiles = false; statusLock = false; }
+  if (!loaded.length){ say("No se pudo abrir ninguna de esas imágenes.", 4000); draw(); return; }
   loaded.sort((a,b) => (a.date || "9999").localeCompare(b.date || "9999"));
-  const startPage = state.page;
+  pushUndo();
   let i = 0;
   for (const sl of loaded){
     while (state.slots[i]) i++;
     state.slots[i] = sl;
   }
   fitPages();
-  statusLock = false;
   draw();
-  const n = perPage();
-  say(`Listo: ${loaded.length} fotos repartidas en ${state.pages} ${state.pages === 1 ? "hoja" : "hojas"}${fail ? ` (${fail} no se pudieron abrir)` : ""}.`, 4000);
-  if (startPage !== state.page) goTo(startPage);
+  say(`Listo: ${loaded.length} ${loaded.length === 1 ? "foto" : "fotos"} en ${state.pages} ${state.pages === 1 ? "hoja" : "hojas"}${fail ? ` (${fail} no se pudieron abrir)` : ""}.`, 4000);
 }
 $("folderBtn").onclick = () => $("fileFolder").click();
 $("addBtn").onclick = () => $("fileMulti").click();
@@ -536,23 +648,27 @@ let targetIndex = -1;
 $("fileOne").onchange = async e => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f || targetIndex < 0) return;
-  try { state.slots[targetIndex] = await loadFile(f); state.sel = targetIndex; fitPages(); } catch(_){ say("No se pudo abrir esa imagen."); }
+  const at = targetIndex;
+  try { const sl = await loadFile(f); pushUndo(); state.slots[at] = sl; state.sel = at; fitPages(); } catch(_){ say("No se pudo abrir esa imagen."); }
   updateToolbar(); draw();
 };
 $("sortBtn").onclick = () => {
   const all = state.slots.filter(Boolean);
   if (!all.length){ say("Primero cargá algunas fotos."); return; }
+  pushUndo();
   all.sort((a,b) => (a.date || "9999").localeCompare(b.date || "9999"));
   state.slots = all; state.pages = 1; fitPages(); state.sel = -1; state.moving = -1;
   updateToolbar(); draw(); say("Fotos ordenadas de la más antigua a la más nueva.");
 };
-let clearArmed = false;
+let clearArmed = false, clearTimer = 0;
 $("clearBtn").onclick = () => {
+  clearTimeout(clearTimer);
   if (!clearArmed && state.slots.some(Boolean)){
     clearArmed = true; $("clearBtn").textContent = "Tocá de nuevo para vaciar todo";
-    setTimeout(() => { clearArmed = false; $("clearBtn").textContent = "Vaciar todo"; }, 3000); return;
+    clearTimer = setTimeout(() => { clearArmed = false; $("clearBtn").textContent = "Vaciar todo"; }, 3000); return;
   }
   clearArmed = false; $("clearBtn").textContent = "Vaciar todo";
+  if (state.slots.some(Boolean)) pushUndo();
   state.slots = []; state.pages = 1; state.page = 0; state.sel = -1; state.moving = -1; updateToolbar(); draw();
 };
 
@@ -562,6 +678,7 @@ $("moveCancel").onclick = cancelMove;
 function doSwap(to){
   const from = state.moving;
   const a = slot(from), b = slot(to);
+  pushUndo();
   state.slots[to] = a; state.slots[from] = b;
   state.moving = -1; state.sel = to;
   const fromPage = Math.floor(from/perPage()) + 1;
@@ -576,6 +693,8 @@ function fmtDate(d){ const m = d.match(/^(\d{4}):(\d{2}):(\d{2})/); return m ? `
 function updateToolbar(){
   const s = state.moving < 0 && state.sel >= 0 ? slot(state.sel) : null;
   $("toolbar").classList.toggle("on", !!s);
+  // Con una foto elegida, arrastrar sobre la hoja la encuadra; si no, el dedo desplaza la página
+  preview.classList.toggle("grab", !!s);
   if (!s) return;
   const cap = $("caption");
   if (document.activeElement !== cap) cap.value = s.caption || "";
@@ -583,13 +702,15 @@ function updateToolbar(){
   $("capPosOne").value = s.pos || "";
   $("dateInfo").textContent = s.date ? "Fecha guardada en la foto: " + fmtDate(s.date) : "Esta foto no tiene fecha guardada (pasa seguido con fotos de WhatsApp o capturas).";
 }
-$("caption").addEventListener("input", e => { const s = slot(state.sel); if (s){ s.caption = e.target.value; draw(); } });
-$("capPosOne").addEventListener("change", e => { const s = slot(state.sel); if (s){ s.pos = e.target.value || null; draw(); } });
+$("caption").addEventListener("focus", () => { if (slot(state.sel)) pushUndo(); });
+$("caption").addEventListener("input", e => { const s = slot(state.sel); if (s){ s.caption = e.target.value; draw("page"); } });
+$("capPosOne").addEventListener("change", e => { const s = slot(state.sel); if (s){ pushUndo(); s.pos = e.target.value || null; draw("page"); } });
 $("toolbar").onclick = e => {
   const act = e.target.dataset.act; if (!act) return;
   const s = slot(state.sel); if (!s) return;
   if (act === "move"){ state.moving = state.sel; updateToolbar(); draw(); return; }
   if (act === "change"){ targetIndex = state.sel; $("fileOne").click(); return; }
+  pushUndo();
   if (act === "rotate"){ s.rot = ((s.rot||0) + 90) % 360; s.fx = .5; s.fy = .5; }
   if (act === "zin") s.zoom = Math.min(4, s.zoom*1.15);
   if (act === "zout") s.zoom = Math.max(1, s.zoom/1.15);
@@ -610,21 +731,24 @@ preview.addEventListener("pointerdown", ev => {
   const gi = hit(ev);
   if (gi < 0){ if (state.moving < 0){ state.sel = -1; updateToolbar(); draw(); } return; }
   drag = {gi, x:ev.clientX, y:ev.clientY, moved:false};
-  preview.setPointerCapture(ev.pointerId);
+  try { preview.setPointerCapture(ev.pointerId); } catch(_){}
 });
 preview.addEventListener("pointermove", ev => {
   if (!drag || state.moving >= 0) return;
+  // En pantallas táctiles solo se encuadra la foto ya elegida; con el mouse, cualquiera
+  if (ev.pointerType !== "mouse" && drag.gi !== state.sel) return;
   const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
   if (!drag.moved && Math.hypot(dx, dy) < 4) return;
-  drag.moved = true;
   const sl = slot(drag.gi); if (!sl) return;
+  if (!drag.moved) pushUndo();
+  drag.moved = true;
   state.sel = drag.gi;
   const r = preview.getBoundingClientRect(), s = r.width / A4.w;
   const g = geom(sl, photoRect(cells()[drag.gi - state.page*perPage()]), s);
   if (g.ex > 0) sl.fx = Math.min(1, Math.max(0, sl.fx - dx/g.ex));
   if (g.ey > 0) sl.fy = Math.min(1, Math.max(0, sl.fy - dy/g.ey));
   drag.x = ev.clientX; drag.y = ev.clientY;
-  updateToolbar(); draw();
+  updateToolbar(); draw("page");
 });
 preview.addEventListener("pointerup", () => {
   if (drag && !drag.moved){
@@ -638,9 +762,17 @@ preview.addEventListener("pointerup", () => {
 preview.addEventListener("pointercancel", () => drag = null);
 
 /* ---------- exportación ---------- */
-function pageCanvas(p){
+async function pageCanvas(p){
+  const hi = new Map();
+  for (const sl of pageSlots(p)){
+    if (hi.has(sl.id)) continue;
+    const f = fullCache.get(sl.id);
+    try { hi.set(sl.id, f || await createImageBitmap(sl.blob)); } catch(_){}
+  }
   const c = document.createElement("canvas"); c.width = 2480; c.height = 3508;
-  render(c.getContext("2d"), 2480/A4.w, p, false); return c;
+  render(c.getContext("2d"), 2480/A4.w, p, false, hi);
+  hi.forEach((b, id) => { if (fullCache.get(id) !== b) b.close(); });
+  return c;
 }
 let downloads = null;
 try { window.claude?.use?.("downloads").then(d => downloads = d).catch(() => {}); } catch(_){}
@@ -663,32 +795,34 @@ async function offer(blob, name, previewCanvas){
 $("jpgBtn").onclick = async () => {
   if (!countOn(state.page)){ say("Esta hoja todavía no tiene fotos."); return; }
   try { await document.fonts.load("500 40px Caveat"); } catch(_){}
-  const c = pageCanvas(state.page);
+  const c = await pageCanvas(state.page);
   c.toBlob(b => offer(b, `hoja-${state.page+1}.jpg`, c), "image/jpeg", 0.95);
 };
 $("pdfBtn").onclick = async () => {
   if (!state.slots.some(Boolean)){ say("Agregá al menos una foto para descargar."); return; }
   try { await document.fonts.load("500 40px Caveat"); } catch(_){}
   const pages = [...Array(state.pages).keys()].filter(p => countOn(p) > 0);
-  if (!window.jspdf){ const c = pageCanvas(state.page); c.toBlob(b => offer(b, `hoja-${state.page+1}.jpg`, c), "image/jpeg", 0.95); return; }
+  if (!window.jspdf){ const c = await pageCanvas(state.page); c.toBlob(b => offer(b, `hoja-${state.page+1}.jpg`, c), "image/jpeg", 0.95); return; }
   const pdf = new window.jspdf.jsPDF({unit:"mm", format:"a4", orientation:"portrait"});
   let firstCanvas = null;
-  for (let i = 0; i < pages.length; i++){
-    statusLock = true; $("status").textContent = `Preparando hoja ${i+1} de ${pages.length}…`;
-    await new Promise(r => setTimeout(r, 0));
-    const c = pageCanvas(pages[i]);
-    if (!firstCanvas) firstCanvas = c;
-    if (i > 0) pdf.addPage("a4", "portrait");
-    pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, A4.w, A4.h);
-  }
-  statusLock = false; draw();
+  try {
+    for (let i = 0; i < pages.length; i++){
+      statusLock = true; $("status").textContent = `Preparando hoja ${i+1} de ${pages.length}…`;
+      await new Promise(r => setTimeout(r, 0));
+      const c = await pageCanvas(pages[i]);
+      if (i > 0) pdf.addPage("a4", "portrait");
+      pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, A4.w, A4.h, undefined, "FAST");
+      if (!firstCanvas) firstCanvas = c; else c.width = c.height = 0; // libera memoria (importante en iPhone)
+    }
+  } finally { statusLock = false; draw(); }
   offer(pdf.output("blob"), "hojas-fotos-a4.pdf", firstCanvas);
 };
 $("overlayClose").onclick = () => $("overlay").classList.remove("on");
 
 /* ---------- proyectos: guardado automático en este navegador (IndexedDB) ---------- */
 function newId(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-let proj = null, lastSig = null, saving = false, lastSavedAt = null, saveError = false, dbOk = true;
+let proj = null, lastSig = null, lastSavedAt = null, saveError = false, dbOk = true;
+let persisted = new Set(); // ids de fotos que ya están guardadas en IndexedDB para el proyecto abierto
 let dbp = null;
 function db(){
   if (!dbp) dbp = new Promise((res, rej) => {
@@ -708,28 +842,37 @@ const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = (
 function record(){
   return {id:proj.id, name:proj.name, created:proj.created,
     settings:{layout:state.layout, style:state.style, bg:state.bg, margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos, pages:state.pages},
-    slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, pos:sl.pos, name:sl.name} : null)};
+    slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h} : null)};
 }
-async function saveProject(force){
-  if (!proj || saving || !dbOk) return;
-  const rec = record(), sig = JSON.stringify(rec);
-  const pending = state.slots.filter(sl => sl && !sl.saved);
-  if (!force && sig === lastSig && !pending.length) return;
-  saving = true; showSaveInfo("Guardando…");
+// Los guardados se encolan: nunca corren dos a la vez y "Guardar ahora" no se pierde
+let saveChain = Promise.resolve();
+function saveProject(force){
+  saveChain = saveChain.then(() => doSave(force)).catch(() => {});
+  return saveChain;
+}
+async function doSave(force){
+  if (!proj || !dbOk) return;
+  const p = proj, rec = record(), sig = JSON.stringify(rec);
+  const pending = new Map();
+  state.slots.forEach(sl => { if (sl && (!persisted.has(sl.id) || sl.dirty)) pending.set(sl.id, sl); });
+  if (!force && sig === lastSig && !pending.size) return;
+  showSaveInfo("Guardando…");
   try {
     const d = await db();
     const t = d.transaction(["projects","photos"], "readwrite");
     const ps = t.objectStore("photos");
     t.objectStore("projects").put({...rec, updated:Date.now(), photoCount:state.slots.filter(Boolean).length});
-    pending.forEach(sl => ps.put({id:sl.id, projectId:proj.id, blob:sl.blob}));
+    pending.forEach(sl => ps.put({id:sl.id, projectId:p.id, blob:sl.blob, thumb:sl.thumbBlob}));
     const keep = new Set(state.slots.filter(Boolean).map(sl => sl.id));
-    const keys = await reqP(ps.index("project").getAllKeys(proj.id));
+    const keys = await reqP(ps.index("project").getAllKeys(p.id));
     keys.forEach(k => { if (!keep.has(k)) ps.delete(k); });
     await doneP(t);
-    pending.forEach(sl => sl.saved = true);
-    lastSig = sig; lastSavedAt = new Date(); saveError = false;
+    if (proj === p){
+      persisted = keep; pending.forEach(sl => sl.dirty = false);
+      lastSig = sig; lastSavedAt = new Date(); saveError = false;
+    }
   } catch(err){ saveError = true; }
-  saving = false; showSaveInfo();
+  showSaveInfo();
 }
 function hhmm(d){ return d.toLocaleTimeString("es", {hour:"2-digit", minute:"2-digit"}); }
 function showSaveInfo(msg){
@@ -750,7 +893,8 @@ function applySettings(st){
 async function newProject(){
   if (proj) await saveProject();
   let n = 1; try { n = (await listProjects()).length + 1; } catch(_){}
-  proj = {id:newId("p"), name:`Proyecto ${n}`, created:Date.now()};
+  releaseImages(); clearUndo();
+  proj = {id:newId("p"), name:`Proyecto ${n}`, created:Date.now()}; persisted = new Set();
   state.slots = []; state.page = 0; state.sel = -1; state.moving = -1;
   applySettings({});
   $("projName").value = proj.name; lastSig = null; lastSavedAt = null;
@@ -764,13 +908,29 @@ async function openProject(id){
   const photos = await reqP(t.objectStore("photos").index("project").getAll(id));
   if (!rec) return;
   statusLock = true; $("status").textContent = "Abriendo proyecto…";
-  const blobs = new Map(photos.map(p => [p.id, p.blob]));
-  const slots = [];
+  const byId = new Map(photos.map(p => [p.id, p]));
+  const slots = [], total = rec.slots.filter(Boolean).length;
+  let done = 0;
   for (const s of rec.slots){
-    const blob = s && blobs.get(s.photoId);
-    if (!blob){ slots.push(null); continue; }
-    try { const src = await createImageBitmap(blob); slots.push({...s, id:s.photoId, src, blob, saved:true}); } catch(_){ slots.push(null); }
+    const ph = s && byId.get(s.photoId);
+    if (!ph){ slots.push(null); continue; }
+    try {
+      let thumb, thumbBlob = ph.thumb, w = s.w, h = s.h, dirty = false;
+      if (thumbBlob && w && h) thumb = await createImageBitmap(thumbBlob);
+      else {
+        // proyecto guardado con una versión anterior: se arma la miniatura una vez y se guarda
+        const full = await createImageBitmap(ph.blob);
+        w = full.width; h = full.height;
+        ({thumb, thumbBlob} = await makeThumb(full));
+        full.close(); dirty = true;
+      }
+      const {photoId, ...rest} = s;
+      slots.push({...rest, id:photoId, blob:ph.blob, thumb, thumbBlob, w, h, dirty});
+    } catch(_){ slots.push(null); }
+    if (++done % 10 === 0){ $("status").textContent = `Abriendo proyecto… ${done} de ${total}`; await new Promise(r => setTimeout(r, 0)); }
   }
+  releaseImages(); clearUndo();
+  persisted = new Set(photos.map(p => p.id));
   proj = {id:rec.id, name:rec.name, created:rec.created};
   applySettings(rec.settings || {});
   state.slots = slots; state.page = 0; state.sel = -1; state.moving = -1; fitPages();
@@ -816,6 +976,8 @@ async function renderProjectList(){
     del.onclick = async () => {
       if (!del.dataset.armed){ del.dataset.armed = "1"; del.textContent = "¿Seguro?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Eliminar"; }, 3000); return; }
       const wasCurrent = proj && p.id === proj.id;
+      if (wasCurrent) proj = null; // así ningún guardado automático vuelve a crear el proyecto borrado
+      await saveChain;
       await deleteProject(p.id);
       if (wasCurrent){ proj = null; const rest = await listProjects(); if (rest.length) await openProject(rest[0].id); else await newProject(); }
       renderProjectList();
@@ -864,7 +1026,9 @@ $("fileBackup").onchange = async e => {
     if (j.format !== "hojas-fotos-a4" || !j.project) throw 0;
     await saveProject();
     const idMap = new Map(), pid = newId("p"), prepared = [];
+    const used = new Set((j.project.slots || []).filter(Boolean).map(s => s.photoId));
     for (const ph of j.photos || []){
+      if (!used.has(ph.id) || idMap.has(ph.id)) continue; // no guarda fotos que ninguna hoja usa
       const nid = newId("f"); idMap.set(ph.id, nid);
       prepared.push({id:nid, projectId:pid, blob:dataURLToBlob(ph.data)});
     }
