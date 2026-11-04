@@ -22,3 +22,10 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/ — se puede agregar a l
 - "Deshacer" (o Ctrl+Z) revierte quitar, mover, girar, encuadrar, vaciar y eliminar hojas.
 - En memoria solo están las fotos completas de la hoja visible; el resto usa miniaturas, así se pueden cargar carpetas grandes.
 - Las fotos HEIC de iPhone se convierten solas con [heic2any](https://github.com/alexcorvi/heic2any) (se descarga solo si hace falta).
+
+## Instalarla como app
+
+- **Android (Chrome):** abrir el enlace → menú ⋮ → "Instalar app". Después, desde la galería: Compartir → MyFotoCards y las fotos entran solas.
+- **iPhone (Safari):** botón Compartir → "Agregar a inicio". (iPhone no permite recibir fotos compartidas en apps web; se cargan con "Agregar fotos sueltas".)
+- Una vez abierta, funciona sin conexión (`sw.js` guarda la app y jsPDF).
+- "Compartir PDF" manda el PDF directo a WhatsApp, mail, Drive, etc. (aparece solo si el navegador lo permite).

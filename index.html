@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hojas A4 de fotos para imprimir</title>
+<meta name="description" content="Armá hojas A4 con fotos estilo polaroid y descargalas listas para imprimir.">
+<meta name="theme-color" content="#6b3fa0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MyFotoCards">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -58,6 +67,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 canvas#preview{width:100%;max-width:min(540px,calc((100vh - 200px) * 0.7071));aspect-ratio:210/297;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18),0 8px 28px rgba(0,0,0,.12);border-radius:2px;touch-action:pan-y pinch-zoom;cursor:pointer;display:block}
 canvas#preview.grab{touch-action:none}
 .pager .undo{width:auto;border-radius:999px;font-size:.95rem;padding:0 14px}
+[hidden]{display:none!important}
+.shareready{display:block;max-width:540px;margin:8px auto 0}
 .tbhint{flex-basis:100%;text-align:center;color:var(--muted);font-size:.85rem}
 .movebar{display:none;margin:4px auto 8px;max-width:540px;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:9px 12px;align-items:center;gap:10px;justify-content:space-between}
 .movebar.on{display:flex}
@@ -164,6 +175,7 @@ canvas#preview.grab{touch-action:none}
       <div class="group"><span class="glabel">Ubicación del texto</span><div class="seg" id="posSeg"></div></div>
       <div class="group btns">
         <button class="btn primary" id="pdfBtn">Descargar PDF con todas las hojas</button>
+        <button class="btn" id="sharePdfBtn" hidden>Compartir PDF (WhatsApp, mail…)</button>
         <button class="btn" id="jpgBtn">Descargar JPG de esta hoja</button>
         <button class="btn" id="clearBtn">Vaciar todo</button>
       </div>
@@ -191,6 +203,7 @@ canvas#preview.grab{touch-action:none}
       <div class="caprow"><input id="caption" type="text" maxlength="40" placeholder="Texto, por ejemplo: Bariloche 2023" aria-label="Texto de la foto"><select id="capPosOne" aria-label="Ubicación del texto en esta foto"><option value="">Ubicación: igual que el resto</option><option value="br">Abajo a la derecha</option><option value="bl">Abajo a la izquierda</option><option value="bc">Abajo al centro</option><option value="tr">Arriba a la derecha</option><option value="tl">Arriba a la izquierda</option><option value="marco">En el marco (solo polaroid)</option></select><div id="dateInfo" class="dateinfo"></div></div>
     </div>
     <div class="status" id="status"></div>
+    <button class="btn primary shareready" id="shareReady" hidden>El PDF está listo: tocá para compartirlo</button>
   </div>
 
   <aside class="sheets" aria-label="Hojas">
@@ -798,11 +811,9 @@ $("jpgBtn").onclick = async () => {
   const c = await pageCanvas(state.page);
   c.toBlob(b => offer(b, `hoja-${state.page+1}.jpg`, c), "image/jpeg", 0.95);
 };
-$("pdfBtn").onclick = async () => {
-  if (!state.slots.some(Boolean)){ say("Agregá al menos una foto para descargar."); return; }
+async function buildPdf(){
   try { await document.fonts.load("500 40px Caveat"); } catch(_){}
   const pages = [...Array(state.pages).keys()].filter(p => countOn(p) > 0);
-  if (!window.jspdf){ const c = await pageCanvas(state.page); c.toBlob(b => offer(b, `hoja-${state.page+1}.jpg`, c), "image/jpeg", 0.95); return; }
   const pdf = new window.jspdf.jsPDF({unit:"mm", format:"a4", orientation:"portrait"});
   let firstCanvas = null;
   try {
@@ -815,8 +826,44 @@ $("pdfBtn").onclick = async () => {
       if (!firstCanvas) firstCanvas = c; else c.width = c.height = 0; // libera memoria (importante en iPhone)
     }
   } finally { statusLock = false; draw(); }
-  offer(pdf.output("blob"), "hojas-fotos-a4.pdf", firstCanvas);
+  return {blob: pdf.output("blob"), firstCanvas};
+}
+function pdfName(){
+  const base = ((proj && proj.name) || "hojas-fotos").replace(/[^\p{L}\p{N} _-]+/gu, "").trim().replace(/\s+/g, "-");
+  return (base || "hojas-fotos") + ".pdf";
+}
+$("pdfBtn").onclick = async () => {
+  if (!state.slots.some(Boolean)){ say("Agregá al menos una foto para descargar."); return; }
+  if (!window.jspdf){ const c = await pageCanvas(state.page); c.toBlob(b => offer(b, `hoja-${state.page+1}.jpg`, c), "image/jpeg", 0.95); return; }
+  const {blob, firstCanvas} = await buildPdf();
+  offer(blob, pdfName(), firstCanvas);
 };
+
+/* compartir el PDF con las apps del teléfono (WhatsApp, mail, Drive…) */
+const canShareFiles = (() => {
+  try { return !!(navigator.share && navigator.canShare && navigator.canShare({files:[new File([""], "x.pdf", {type:"application/pdf"})]})); }
+  catch(_){ return false; }
+})();
+$("sharePdfBtn").hidden = !canShareFiles;
+let sharePending = null;
+async function sharePdf(file){
+  try {
+    await navigator.share({files:[file], title:file.name});
+    sharePending = null; $("shareReady").hidden = true;
+  } catch(err){
+    if (err && err.name === "AbortError"){ sharePending = null; $("shareReady").hidden = true; return; } // la persona cerró el menú
+    // Si armar el PDF tardó, el navegador pide un toque nuevo antes de compartir
+    if (err && err.name === "NotAllowedError"){ sharePending = file; $("shareReady").hidden = false; return; }
+    say("No se pudo compartir. Probá con Descargar PDF.", 4000);
+  }
+}
+$("sharePdfBtn").onclick = async () => {
+  if (!state.slots.some(Boolean)){ say("Agregá al menos una foto para compartir."); return; }
+  if (!window.jspdf){ say("No se pudo cargar el generador de PDF. Revisá la conexión."); return; }
+  const {blob} = await buildPdf();
+  await sharePdf(new File([blob], pdfName(), {type:"application/pdf"}));
+};
+$("shareReady").onclick = () => { if (sharePending) sharePdf(sharePending); };
 $("overlayClose").onclick = () => $("overlay").classList.remove("on");
 
 /* ---------- proyectos: guardado automático en este navegador (IndexedDB) ---------- */
@@ -1053,7 +1100,31 @@ buildUI(); draw();
     dbOk = false; proj = {id:newId("p"), name:"Proyecto 1", created:Date.now()};
     $("projName").value = proj.name; showSaveInfo();
   }
+  await takeSharedPhotos();
 })();
+
+/* ---------- app instalable: funciona sin conexión y recibe fotos compartidas ---------- */
+const swAllowed = location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname);
+if ("serviceWorker" in navigator && swAllowed){
+  try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch(_){}
+}
+// Android: al compartir fotos desde la galería, el service worker las deja guardadas y abre la app con ?compartidas=1
+async function takeSharedPhotos(){
+  if (!new URLSearchParams(location.search).has("compartidas")) return;
+  history.replaceState(null, "", location.pathname);
+  try {
+    const c = await caches.open("compartidas");
+    const files = [];
+    for (const req of await c.keys()){
+      const res = await c.match(req);
+      const name = decodeURIComponent(res.headers.get("X-Nombre") || "foto.jpg");
+      files.push(new File([await res.blob()], name, {type: res.headers.get("Content-Type") || ""}));
+    }
+    await caches.delete("compartidas");
+    if (files.length) await addFiles(files);
+    else say("No llegaron fotos. Probá compartirlas de nuevo.", 4000);
+  } catch(_){ say("No se pudieron recibir las fotos compartidas.", 4000); }
+}
 try { document.fonts.load("500 40px Caveat").then(draw).catch(() => {}); } catch(_){}
 </script>
 </body>
