@@ -45,10 +45,10 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/. Las fotos no se suben a
 
 ## Luli's Photocards
 
-- **Colección de tarjetas:** agregar fotos o una carpeta, encuadrar, girar, duplicar, reordenar y borrar.
+- **Colección de tarjetas:** agregar fotos o una carpeta, encuadrar, girar, duplicar, ordenar arrastrando y borrar. Con mouse se arrastra siempre; en el teléfono, después de tocar «Ordenar».
 - **Recorte desde un collage:** marcar zonas de frente y dorso, cuadrícula automática, zoom, tamaño compartido y atajos de teclado.
 - **Diseñador de dorsos:** 6 patrones (incluido uno estilo naipe español), colores, marco fino, logo del grupo y del álbum (con color, contorno y posición), textos y numeración.
 - **Quitar un color** de una imagen y soporte para PNG con transparencia.
-- **Impresión:** hoja A4 o Carta; tarjetas de 55×85, 63×88 y 44×68 mm; sangrado, marcas de corte, dorsos espejados para doble faz y hoja de prueba de alineación.
+- **Impresión:** hoja A4 o Carta; tarjetas photocard 55×85, póker 63×88, naipe español 61,5×95 y mini 44×68 mm; cortes compartidos (tarjetas pegadas, entran más por hoja); sangrado, marcas de corte, dorsos espejados para doble faz y hoja de prueba de alineación.
 - **Para la imprenta:** imprimir el PDF en doble faz, volteo por el borde largo y escala 100%.
 - Colecciones clasificadas por grupo y álbum o set; copia de una colección en archivo JSON.

@@ -57,6 +57,14 @@ h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem
 .shareready{width:100%;max-width:460px}
 .modehead{font-size:1.05rem!important;border-bottom:1px solid var(--line);padding-bottom:4px}
 .pitem canvas.pthumb{width:40px;height:56px}
+#grid{position:relative}
+.grid.sorting .pc-flip{touch-action:none;cursor:grab}
+.grid.sorting .pc-inner{animation:wiggle .9s ease-in-out infinite alternate}
+@keyframes wiggle{from{transform:rotate(-.6deg)}to{transform:rotate(.6deg)}}
+.pc.dragging{opacity:.3}
+.drop-ind{position:absolute;width:5px;border-radius:3px;background:var(--accent);pointer-events:none;z-index:5;box-shadow:0 0 0 3px var(--accent-soft)}
+.drag-ghost{position:fixed;pointer-events:none;z-index:40;border-radius:7%/4.5%;box-shadow:0 12px 30px rgba(0,0,0,.35);transform:rotate(3deg);opacity:.95}
+#sortModeBtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .proj{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .proj input{font:inherit;font-weight:600;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-width:0;width:220px;max-width:60vw}
 .saveinfo{color:var(--muted);font-size:.85rem;width:100%;text-align:right}
@@ -251,6 +259,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
       <button class="btn" id="folderBtn">Abrir carpeta</button>
       <button class="btn" id="cropBtn">Recortar de un collage</button>
       <button class="btn" id="flipAllBtn">Ver dorsos</button>
+      <button class="btn" id="sortModeBtn">Ordenar</button>
       <button class="btn" id="selModeBtn">Seleccionar</button>
       <button class="btn" id="toHojasBtn" title="Arma un proyecto de Hojas de fotos con los frentes de estas tarjetas">Usar en Hojas de fotos</button>
     </div>
@@ -260,6 +269,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
       <button class="btn small danger" id="selDelete">Borrar seleccionadas</button>
       <button class="btn small" id="selCancel">Cancelar</button>
     </div>
+    <p class="hint" id="sortHint" hidden style="margin:-4px 0 12px">Arrastrá cada tarjeta al lugar donde la querés. La línea rosa marca dónde va a quedar. Cuando termines, tocá «Listo».</p>
     <div id="grid" class="grid"></div>
     <div id="emptyCol" class="empty"><b>Todavía no hay tarjetas</b>Cada foto que agregues se convierte en el frente de una photocard. Tocá una tarjeta para darla vuelta y ver su dorso.</div>
   </section>
@@ -338,6 +348,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
         <div class="panel">
           <h2>Opciones de impresión</h2>
           <label class="check"><input type="checkbox" id="withBacks"> Imprimir dorsos (doble faz)</label>
+          <label class="check"><input type="checkbox" id="shared"> Cortes compartidos: tarjetas pegadas, sin espacio entre ellas (entran más por hoja)</label>
           <label class="check"><input type="checkbox" id="bleed"> Sangrado de 1,5 mm (evita bordes blancos al cortar)</label>
           <label class="check"><input type="checkbox" id="marks"> Marcas de corte en el margen</label>
           <label class="check"><input type="checkbox" id="rotBack"> Girar las hojas de dorso 180°</label>
@@ -531,11 +542,12 @@ const paper = () => PAPERS.find(p => p.id === state.paper) || PAPERS[0];
 const LOW_DPI = 150; // por debajo de esto la foto impresa se puede ver pixelada
 const SIZES = [
   {id:"std", w:55, h:85, label:"Estándar 55×85 mm"},
-  {id:"big", w:63, h:88, label:"Grande 63×88 mm"},
+  {id:"big", w:63, h:88, label:"Póker 63×88 mm"},
+  {id:"naipe", w:61.5, h:95, label:"Naipe español 61,5×95 mm"},
   {id:"mini", w:44, h:68, label:"Mini 44×68 mm"}
 ];
 const state = {
-  paper:"a4", size:"std", bleed:true, marks:true, withBacks:true, rotBack:false,
+  paper:"a4", size:"std", shared:false, bleed:true, marks:true, withBacks:true, rotBack:false,
   backMode:"design", backColor:"#f6d3e4", backTextColor:"#5b2140", backText:"", backText2:"", backNumber:true,
   pattern:"naipe", patternColor:"#5b2140", patternAlpha:0.55, frame:true, plate:true, font:"Bricolage Grotesque", logoSize:0.5, logo:null,
   logo2:null, logo2Size:0.4, logoPos:null, logo2Pos:null, textPos:null, logoTint:false, logoTintColor:"#ffffff", logo2Tint:false, logo2TintColor:"#ffffff",
@@ -588,7 +600,7 @@ const size = () => SIZES.find(s => s.id === state.size);
 
 /* ---------- geometría de la hoja ---------- */
 function grid(){
-  const sz = size(), b = state.bleed ? 1.5 : 0, g = state.bleed ? 3 : 2, mm = 7;
+  const sz = size(), b = state.bleed ? 1.5 : 0, g = state.shared ? 0 : (state.bleed ? 3 : 2), mm = state.shared ? 5 : 7;
   const cols = Math.max(1, Math.floor((paper().w - 2*mm + g) / (sz.w + g)));
   const rows = Math.max(1, Math.floor((paper().h - 2*mm + g) / (sz.h + g)));
   const W = cols*sz.w + (cols-1)*g, H = rows*sz.h + (rows-1)*g;
@@ -846,7 +858,12 @@ function renderSheet(ctx, s, page, side, mode){
     // en el dorso, las columnas se espejan para que coincidan al dar vuelta la hoja
     const x = side === "back" ? paper().w - cell.x - cell.w : cell.x, y = cell.y;
     const C = {x:x*s, y:y*s, w:cell.w*s, h:cell.h*s};
-    const R = {x:(x-G.b)*s, y:(y-G.b)*s, w:(cell.w+2*G.b)*s, h:(cell.h+2*G.b)*s};
+    // con cortes compartidos, el sangrado va solo en los bordes exteriores de la grilla
+    const eL = G.g > 0 || Math.abs(x - G.x0) < 0.01 ? G.b : 0, eR = G.g > 0 || Math.abs(x + cell.w - (G.x0 + G.W)) < 0.01 ? G.b : 0;
+    const eT = G.g > 0 || Math.abs(y - G.y0) < 0.01 ? G.b : 0, eB = G.g > 0 || Math.abs(y + cell.h - (G.y0 + G.H)) < 0.01 ? G.b : 0;
+    // ajustado a píxeles enteros para que no queden líneas finas entre tarjetas pegadas
+    const rx0 = Math.floor((x-eL)*s), ry0 = Math.floor((y-eT)*s), rx1 = Math.ceil((x+cell.w+eR)*s), ry1 = Math.ceil((y+cell.h+eB)*s);
+    const R = {x:rx0, y:ry0, w:rx1 - rx0, h:ry1 - ry0};
     if (mode === "test"){
       ctx.strokeStyle = "#000"; ctx.lineWidth = 0.3*s; ctx.strokeRect(C.x, C.y, C.w, C.h);
       ctx.fillStyle = "#000"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -876,7 +893,8 @@ function renderSheet(ctx, s, page, side, mode){
     ctx.strokeStyle = "#000"; ctx.lineWidth = Math.max(0.6, 0.15*s);
     const xs = new Set(), ys = new Set();
     G.cells.forEach(c => { const x = side === "back" ? paper().w - c.x - c.w : c.x; xs.add(x); xs.add(x + c.w); ys.add(c.y); ys.add(c.y + c.h); });
-    const top = G.y0, bot = G.y0 + G.H, left = G.x0, right = G.x0 + G.W, gapM = 1.5, len = 4;
+    const top = G.y0, bot = G.y0 + G.H, left = G.x0, right = G.x0 + G.W, gapM = Math.max(1.5, G.b + 0.5);
+    const len = clamp(Math.min(G.x0, G.y0) - gapM - 0.5, 1.5, 4);
     ctx.beginPath();
     xs.forEach(x => { ctx.moveTo(x*s, (top-gapM)*s); ctx.lineTo(x*s, (top-gapM-len)*s); ctx.moveTo(x*s, (bot+gapM)*s); ctx.lineTo(x*s, (bot+gapM+len)*s); });
     ys.forEach(y => { ctx.moveTo((left-gapM)*s, y*s); ctx.lineTo((left-gapM-len)*s, y*s); ctx.moveTo((right+gapM)*s, y*s); ctx.lineTo((right+gapM+len)*s, y*s); });
@@ -957,6 +975,7 @@ function renderGrid(){
       el = document.createElement("div"); el.className = "pc";
       el.innerHTML = '<button class="pc-del" aria-label="Borrar tarjeta">×</button><span class="pc-check" aria-hidden="true">✓</span><button class="pc-flip" aria-label="Dar vuelta"><div class="pc-inner"><canvas class="f"></canvas><canvas class="b"></canvas></div></button><div class="pc-meta"><span></span><button>Editar</button></div>';
       el.querySelector(".pc-flip").onclick = () => {
+        if (Date.now() - lastDragEnd < 350) return;
         if (state.selecting){
           const id = state.cards[+el.dataset.i].id;
           if (state.picked.has(id)) state.picked.delete(id); else state.picked.add(id);
@@ -1007,7 +1026,7 @@ function deleteCards(ids){
   renderAll();
   toast(`${removed.length} ${removed.length === 1 ? "tarjeta borrada" : "tarjetas borradas"}. Podés recuperarlas con Deshacer.`, 3500);
 }
-$("selModeBtn").onclick = () => { state.selecting = true; state.picked.clear(); renderGrid(); };
+$("selModeBtn").onclick = () => { setSorting(false); state.selecting = true; state.picked.clear(); renderGrid(); };
 $("selCancel").onclick = () => { state.selecting = false; state.picked.clear(); renderGrid(); };
 $("selAll").onclick = () => {
   if (state.picked.size === state.cards.length) state.picked.clear();
@@ -1015,6 +1034,86 @@ $("selAll").onclick = () => {
   renderGrid();
 };
 $("selDelete").onclick = () => deleteCards(new Set(state.picked));
+
+/* ---------- ordenar arrastrando ----------
+   Con mouse se puede arrastrar siempre; en el teléfono, después de tocar «Ordenar»
+   (así el dedo sigue sirviendo para desplazar la página). */
+let lastDragEnd = 0, sorting = false, sdrag = null;
+function setSorting(on){
+  sorting = on;
+  $("grid").classList.toggle("sorting", on);
+  $("sortModeBtn").setAttribute("aria-pressed", on);
+  $("sortModeBtn").textContent = on ? "Listo" : "Ordenar";
+  $("sortHint").hidden = !on;
+  if (on){ state.allFlipped = false; state.selecting = false; state.picked.clear(); renderGrid(); }
+}
+$("sortModeBtn").onclick = () => setSorting(!sorting);
+function dropTarget(x, y){
+  const kids = [...$("grid").querySelectorAll(":scope > .pc")];
+  let best = null, bd = Infinity;
+  kids.forEach((el, i) => {
+    const r = el.querySelector(".pc-flip").getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const d = Math.hypot((x - cx)/r.width, (y - cy)/r.height*0.6);
+    if (d < bd){ bd = d; best = {i, r, after: x > cx}; }
+  });
+  return best ? {idx: best.i + (best.after ? 1 : 0), r:best.r, after:best.after} : null;
+}
+function showIndicator(t){
+  const grid = $("grid"); let ind = grid.querySelector(".drop-ind");
+  if (!t){ if (ind) ind.remove(); return; }
+  if (!ind){ ind = document.createElement("div"); ind.className = "drop-ind"; grid.appendChild(ind); }
+  const g = grid.getBoundingClientRect();
+  ind.style.left = ((t.after ? t.r.right + 7 : t.r.left - 7) - g.left - 2.5) + "px";
+  ind.style.top = (t.r.top - g.top) + "px";
+  ind.style.height = t.r.height + "px";
+}
+$("grid").addEventListener("pointerdown", e => {
+  const btn = e.target.closest(".pc-flip");
+  if (!btn || state.selecting || e.button > 0) return;
+  if (e.pointerType !== "mouse" && !sorting) return;
+  const el = btn.closest(".pc");
+  sdrag = {i:+el.dataset.i, el, x:e.clientX, y:e.clientY, active:false, target:null};
+  if (sorting) btn.setPointerCapture(e.pointerId);
+});
+window.addEventListener("pointermove", e => {
+  if (!sdrag) return;
+  if (!sdrag.active){
+    if (Math.hypot(e.clientX - sdrag.x, e.clientY - sdrag.y) < 6) return;
+    sdrag.active = true;
+    const src = sdrag.el.querySelector("canvas.f"), r = src.getBoundingClientRect();
+    const gh = document.createElement("canvas"); gh.className = "drag-ghost";
+    gh.width = src.width; gh.height = src.height; gh.getContext("2d").drawImage(src, 0, 0);
+    gh.style.width = r.width*0.85 + "px"; gh.style.height = r.height*0.85 + "px";
+    document.body.appendChild(gh);
+    sdrag.ghost = gh; sdrag.gw = r.width*0.85; sdrag.gh = r.height*0.85;
+    sdrag.el.classList.add("dragging");
+  }
+  e.preventDefault();
+  sdrag.ghost.style.left = (e.clientX - sdrag.gw/2) + "px";
+  sdrag.ghost.style.top = (e.clientY - sdrag.gh/2) + "px";
+  sdrag.target = dropTarget(e.clientX, e.clientY);
+  showIndicator(sdrag.target);
+  if (e.clientY < 70) window.scrollBy(0, -14);
+  else if (e.clientY > window.innerHeight - 110) window.scrollBy(0, 14);
+}, {passive:false});
+function endSort(){
+  if (!sdrag) return;
+  const d = sdrag; sdrag = null;
+  if (!d.active) return;
+  lastDragEnd = Date.now();
+  d.ghost.remove(); d.el.classList.remove("dragging"); showIndicator(null);
+  if (!d.target) return;
+  let to = d.target.idx; const from = d.i;
+  if (to > from) to--;
+  if (to === from) return;
+  const [card] = state.cards.splice(from, 1);
+  state.cards.splice(to, 0, card);
+  renderGrid();
+  toast(`Tarjeta movida al lugar #${to+1}.`);
+}
+window.addEventListener("pointerup", endSort);
+window.addEventListener("pointercancel", () => { if (sdrag && sdrag.active){ sdrag.ghost.remove(); sdrag.el.classList.remove("dragging"); showIndicator(null); } sdrag = null; });
 
 /* ---------- dorso común ---------- */
 function seg(el, items, get, set){
@@ -1136,7 +1235,10 @@ function renderPrintTab(){
   seg($("paperSeg"), PAPERS, () => state.paper, v => { state.paper = v; state.page = 0; });
   seg($("sizeSeg"), SIZES, () => state.size, v => { state.size = v; state.page = 0; });
   const per = perSheet(), n = sheetCount();
-  $("sizeInfo").textContent = `Entran ${per} tarjetas por hoja ${paper().label}.`;
+  const szi = size();
+  let info = `Cada tarjeta mide ${String(szi.w).replace(".", ",")} × ${szi.h} mm. Entran ${per} por hoja ${paper().label}.`;
+  if (!state.shared){ state.shared = true; const alt = perSheet(); state.shared = false; if (alt > per) info += ` Con cortes compartidos entran ${alt}.`; }
+  $("sizeInfo").textContent = info;
   state.page = Math.min(state.page, n-1);
   seg($("sideSeg"), [{id:"front", label:"Frente"}, {id:"back", label:"Dorso"}], () => state.side, v => state.side = v);
   $("sideSeg").style.display = state.withBacks ? "" : "none";
@@ -1156,7 +1258,7 @@ function renderPrintTab(){
 }
 $("prevBtn").onclick = () => { state.page--; renderPrintTab(); };
 $("nextBtn").onclick = () => { state.page++; renderPrintTab(); };
-["withBacks","bleed","marks","rotBack"].forEach(k => $(k).onchange = e => { state[k] = e.target.checked; renderAll(); });
+["withBacks","bleed","marks","rotBack","shared"].forEach(k => $(k).onchange = e => { state[k] = e.target.checked; renderAll(); });
 
 function renderAll(){
   if (state.tab === "col") renderGrid();
@@ -1776,7 +1878,7 @@ const LS_LAST = "lpc-ultimo-proyecto", LS_CONFIG = "lpc-configuracion";
 function db(){ return MFC.openDb("cards"); }
 const reqP = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); });
-const SETTINGS = ["paper","size","bleed","marks","withBacks","rotBack","backMode","backColor","backTextColor","backText","backText2","backNumber","pattern","patternColor","patternAlpha","frame","plate","font","logoSize","logo2Size","logoPos","logo2Pos","textPos","logoTint","logoTintColor","logo2Tint","logo2TintColor","logoStroke","logoStrokeColor","logoStrokeW","logo2Stroke","logo2StrokeColor","logo2StrokeW"];
+const SETTINGS = ["paper","size","shared","bleed","marks","withBacks","rotBack","backMode","backColor","backTextColor","backText","backText2","backNumber","pattern","patternColor","patternAlpha","frame","plate","font","logoSize","logo2Size","logoPos","logo2Pos","textPos","logoTint","logoTintColor","logo2Tint","logo2TintColor","logoStroke","logoStrokeColor","logoStrokeW","logo2Stroke","logo2StrokeColor","logo2StrokeW"];
 function record(){
   const settings = {}; SETTINGS.forEach(k => settings[k] = state[k]);
   return {id:proj.id, name:proj.name, created:proj.created, groupId:proj.groupId || null, albumId:proj.albumId || null, settings, commonBack:state.commonBack, logo:state.logo, logo2:state.logo2, cards:state.cards};
@@ -1900,10 +2002,10 @@ function syncInputs(){
   $("logoStroke").checked = state.logoStroke; $("logo2Stroke").checked = state.logo2Stroke;
   $("logoTint").checked = state.logoTint; $("logo2Tint").checked = state.logo2Tint;
   $("frame").checked = state.frame; $("plate").checked = state.plate;
-  ["withBacks","bleed","marks","rotBack"].forEach(k => $(k).checked = state[k]);
+  ["withBacks","bleed","marks","rotBack","shared"].forEach(k => $(k).checked = !!state[k]);
   $("projName").value = proj ? proj.name : "";
 }
-const DEFAULTS = {size:"std", bleed:true, marks:true, withBacks:true, rotBack:false, backMode:"design", backColor:"#f6d3e4", backTextColor:"#5b2140", backText:"", backText2:"", backNumber:true, pattern:"naipe", patternColor:"#5b2140", patternAlpha:0.55, frame:true, plate:true, font:"Bricolage Grotesque", logoSize:0.5, logo2Size:0.4, logoPos:null, logo2Pos:null, textPos:null, logoTint:false, logoTintColor:"#ffffff", logo2Tint:false, logo2TintColor:"#ffffff", logoStroke:false, logoStrokeColor:"#000000", logoStrokeW:0.025, logo2Stroke:false, logo2StrokeColor:"#000000", logo2StrokeW:0.025};
+const DEFAULTS = {paper:"a4", size:"std", shared:false, bleed:true, marks:true, withBacks:true, rotBack:false, backMode:"design", backColor:"#f6d3e4", backTextColor:"#5b2140", backText:"", backText2:"", backNumber:true, pattern:"naipe", patternColor:"#5b2140", patternAlpha:0.55, frame:true, plate:true, font:"Bricolage Grotesque", logoSize:0.5, logo2Size:0.4, logoPos:null, logo2Pos:null, textPos:null, logoTint:false, logoTintColor:"#ffffff", logo2Tint:false, logo2TintColor:"#ffffff", logoStroke:false, logoStrokeColor:"#000000", logoStrokeW:0.025, logo2Stroke:false, logo2StrokeColor:"#000000", logo2StrokeW:0.025};
 async function newProject(){
   if (proj) await saveProject();
   let n = 1; try { n = (await listProjects()).length + 1; } catch(_){}
