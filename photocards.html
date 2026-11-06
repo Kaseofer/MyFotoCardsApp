@@ -14,7 +14,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<script src="common.js?v=5"></script>
+<script src="common.js?v=6"></script>
+<script src="sync.js?v=6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -40,7 +41,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Figtree",system
 .wrap{max-width:1040px;margin:0 auto;padding:18px 16px 110px}
 header.top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
 h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem,5vw,2.2rem);line-height:1;margin:0;font-weight:800;letter-spacing:-.02em}
-.modes{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;width:fit-content;max-width:100%;flex-basis:100%}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap;flex-basis:100%}
+.modes{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;width:fit-content;max-width:100%}
 .modes a{font-weight:600;font-size:.9rem;text-decoration:none;color:var(--muted);padding:6px 12px;border-radius:999px;white-space:nowrap}
 .modes a[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
 .iconbtn{flex:0 0 auto;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
@@ -263,7 +265,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
 <body>
 <div class="wrap">
   <header class="top">
-    <nav class="modes" aria-label="Modalidad"><a href="./" data-mode="hojas">Hojas de fotos</a><a href="photocards.html" data-mode="cards">Luli's Photocards</a></nav>
+    <div class="topbar"><nav class="modes" aria-label="Modalidad"><a href="./" data-mode="hojas">Hojas de fotos</a><a href="photocards.html" data-mode="cards">Luli's Photocards</a></nav><span id="cloudMount"></span></div>
     <h1>Luli's Photocards</h1>
     <div class="proj">
       <input id="projName" maxlength="60" aria-label="Nombre de la colección" autocomplete="off">
@@ -2480,6 +2482,14 @@ setSaveState("saving"); // mientras abre la última colección
     if (shared.files.length) await addFronts(shared.files);
     else toast("No llegaron fotos. Probá compartirlas de nuevo.", 4000);
   }
+  MFC.cloud.init({mount: $("cloudMount"), flush: () => saveProject(), onRemoteChange: async ({changed, removed, groups}) => {
+    if (proj && removed.includes(proj.id)){
+      proj = null; const list = await listProjects();
+      if (list.length) await openProject(list[0].id); else await newProject();
+    } else if (proj && !opening && changed.includes(proj.id) && JSON.stringify(record()) === lastSig) await openProject(proj.id);
+    if ($("projModal").classList.contains("on")) renderProjectList();
+    if (groups){ updateClassChip(); if ($("groupsModal").classList.contains("on")) renderGroups(); }
+  }});
 })();
 const swAllowed = location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname);
 if ("serviceWorker" in navigator && swAllowed){ try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch(_){} }

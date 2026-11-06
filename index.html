@@ -15,7 +15,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="common.js?v=5"></script>
+<script src="common.js?v=6"></script>
+<script src="sync.js?v=6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -159,7 +160,8 @@ canvas#preview.grab{touch-action:none}
 .pitem button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 11px;cursor:pointer;white-space:nowrap}
 .pitem button.open{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .empty{color:var(--muted);text-align:center;padding:14px}
-.modes{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;width:fit-content;max-width:100%;margin:0 0 -8px;grid-column:1 / -1;order:-3}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap;margin:0 0 -8px;grid-column:1 / -1;order:-3}
+.modes{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;width:fit-content;max-width:100%}
 .modes a{font-weight:600;font-size:.9rem;text-decoration:none;color:var(--muted);padding:6px 12px;border-radius:999px;white-space:nowrap}
 .modes a[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
 .ghead{margin:10px 0 2px;font-size:1rem}
@@ -173,7 +175,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
 </head>
 <body>
 <div class="wrap">
-  <nav class="modes" aria-label="Modalidad"><a href="./" data-mode="hojas">Hojas de fotos</a><a href="photocards.html" data-mode="cards">Luli's Photocards</a></nav>
+  <div class="topbar"><nav class="modes" aria-label="Modalidad"><a href="./" data-mode="hojas">Hojas de fotos</a><a href="photocards.html" data-mode="cards">Luli's Photocards</a></nav><span id="cloudMount"></span></div>
   <div>
     <h1>Hojas de fotos para imprimir</h1>
     <p class="lead">Cargá una carpeta entera y se reparten solas en las hojas que hagan falta. Las fotos se quedan en tu dispositivo.</p>
@@ -1559,6 +1561,14 @@ buildUI(); draw(); setSaveState("saving"); // mientras abre el último proyecto
     if (shared.files.length) await addFiles(shared.files);
     else say("No llegaron fotos. Probá compartirlas de nuevo.", 4000);
   }
+  // la nube: guarda los proyectos en la cuenta y trae los cambios de otros dispositivos
+  MFC.cloud.init({mount: $("cloudMount"), flush: () => saveProject(), onRemoteChange: async ({changed, removed}) => {
+    if (proj && removed.includes(proj.id)){
+      proj = null; const list = await listProjects();
+      if (list.length) await openProject(list[0].id); else await newProject();
+    } else if (proj && changed.includes(proj.id) && JSON.stringify(record()) === lastSig) await openProject(proj.id);
+    if ($("projModal").classList.contains("on")) renderProjectList();
+  }});
 })();
 
 /* ---------- app instalable: funciona sin conexión y recibe fotos compartidas ---------- */
