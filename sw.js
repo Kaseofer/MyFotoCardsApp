@@ -3,10 +3,10 @@
    - La página se pide primero a la red (así siempre llega la última versión) y,
      si no hay conexión, se usa la copia guardada.
    - Recibe las fotos que se comparten desde la galería (Android) y se las pasa a la página. */
-const VERSION = "v2";
+const VERSION = "v3";
 const APP = `app-${VERSION}`, RUNTIME = "runtime", SHARED = "compartidas";
 const CORE = [
-  "./", "./index.html", "./photocards.html", "./common.js", "./manifest.webmanifest",
+  "./", "./index.html", "./photocards.html", "./common.js?v=3", "./manifest.webmanifest",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png",
 ];
 const JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -30,7 +30,8 @@ self.addEventListener("activate", e => {
 
 // Cada página se guarda con su propio nombre (sin ?parámetros); "./" es index.html
 function cacheKey(req){
-  const u = new URL(req.url); u.search = ""; u.hash = "";
+  const u = new URL(req.url); u.hash = "";
+  if (!u.pathname.endsWith(".js")) u.search = ""; // common.js?v=N sí lleva la versión
   if (u.pathname.endsWith("/")) u.pathname += "index.html";
   return u.href;
 }
@@ -38,7 +39,8 @@ async function networkFirst(req){
   const c = await caches.open(APP), key = cacheKey(req);
   try {
     const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch(req, {signal: ctrl.signal});
+    // "no-cache": el navegador pregunta siempre si hay una versión nueva (GitHub Pages deja usar la copia 10 minutos)
+    const res = await fetch(req, {signal: ctrl.signal, cache: "no-cache"});
     clearTimeout(t);
     if (res.ok && !res.redirected) c.put(key, res.clone());
     return res;
