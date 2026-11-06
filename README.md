@@ -46,6 +46,7 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/. Las fotos no se suben a
 
 ## Luli's Photocards
 
+- **Editor de tarjeta:** imagen grande, barra de herramientas con íconos al costado (cambiar imagen, girar, acercar, alejar, centrar, quitar un color, mover antes/después, duplicar y eliminar) y el panel Luz y color a la derecha. En el teléfono la barra queda debajo de la imagen.
 - **Colección de tarjetas:** agregar fotos o una carpeta, encuadrar, girar, duplicar, ordenar arrastrando y borrar. Con mouse se arrastra siempre; en el teléfono, después de tocar «Ordenar».
 - **Recorte desde un collage:** marcar zonas de frente y dorso, cuadrícula automática, zoom, tamaño compartido y atajos de teclado.
 - **Diseñador de dorsos:** 6 patrones (incluido uno estilo naipe español), colores, marco fino, logo del grupo y del álbum (con color, contorno y posición), textos y numeración.

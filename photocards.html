@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<script src="common.js?v=4"></script>
+<script src="common.js?v=5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -58,14 +58,32 @@ h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem
 .modehead{font-size:1.05rem!important;border-bottom:1px solid var(--line);padding-bottom:4px}
 .pitem canvas.pthumb{width:40px;height:56px}
 #grid{position:relative}
-.mcard.edcard{max-width:860px}
-.edgrid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
-.edmain{display:flex;flex-direction:column;gap:12px;min-width:0}
-.edside{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg);position:sticky;top:0}
+.mcard.edcard{width:auto;max-width:100%;padding:14px 16px 16px;gap:10px}
+.edhead{display:flex;align-items:center;gap:12px}
+.edhead h2{flex:1;margin:0;font-size:1.1rem}
+.edgrid{display:grid;grid-template-columns:auto 50px 270px;gap:14px;align-items:start}
+.edmain{display:flex;flex-direction:column;gap:6px;min-width:0}
+.edres{margin:0;text-align:center;font-size:.82rem;color:var(--muted)}
+.edbar{display:flex;flex-direction:column;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:5px}
+.edbar .tools{flex-direction:column;flex-wrap:nowrap;gap:4px}
+.edbar .tools + .tools{border-top:1px solid var(--line);padding-top:10px}
+.edbar .tools button{width:38px;height:38px;padding:0;display:grid;place-items:center;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--ink);cursor:pointer}
+.edbar .tools button:hover,.edbar .tools button:focus-visible{background:var(--surface);border-color:var(--line)}
+.edbar button svg{width:21px;height:21px}
+.edbar .tools button.danger{color:var(--bad)}
+.edbar .tools button.armed{background:var(--bad);color:#fff;border-color:var(--bad)}
+.edside{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg)}
 .edside h3{margin:0 0 6px;font-size:1rem}
 .edside .adjrow{grid-template-columns:minmax(0,1fr) 40px;row-gap:0}
 .edside .adjrow span{grid-column:1 / -1;font-weight:600;font-size:.92rem}
-@media (max-width:700px){.edgrid{grid-template-columns:minmax(0,1fr)}.edside{position:static}}
+@media (max-width:760px){
+  .mcard.edcard{width:100%}
+  .edgrid{grid-template-columns:minmax(0,1fr)}
+  #edCanvas{height:auto;width:min(100%,340px)}
+  .edbar{flex-direction:row;justify-content:center;flex-wrap:wrap}
+  .edbar .tools{flex-direction:row;flex-wrap:wrap;justify-content:center}
+  .edbar .tools + .tools{border-top:0;padding-top:0;border-left:1px solid var(--line);padding-left:6px}
+}
 .adjpanel{display:grid;gap:6px;padding:4px 0 8px}
 .adjrow{display:grid;grid-template-columns:84px minmax(0,1fr) 40px;align-items:center;gap:8px}
 .adjrow output{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -171,7 +189,7 @@ canvas#sheet{width:100%;max-width:min(460px,calc((100vh - 220px) * .7071));aspec
 .modal.on{display:flex}
 .mcard{background:var(--surface);color:var(--ink);border-radius:20px;width:100%;max-width:460px;max-height:100%;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 .mcard h2{margin:0;font-size:1.2rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
-#edCanvas{width:min(250px,62vw);display:block;margin:0 auto;border-radius:7%/4.5%;box-shadow:0 2px 12px rgba(42,29,58,.25);touch-action:none;cursor:grab;background:#fff}
+#edCanvas{height:min(72vh,640px);width:auto;max-width:100%;display:block;margin:0 auto;border-radius:7%/4.5%;box-shadow:0 2px 12px rgba(42,29,58,.25);touch-action:none;cursor:grab;background:#fff}
 .tools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .tools button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
 .plist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto}
@@ -402,33 +420,37 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
 <!-- editor de tarjeta -->
 <div class="modal" id="editor" role="dialog" aria-label="Editar tarjeta">
   <div class="mcard edcard">
-    <h2><span id="edTitle">Tarjeta</span><button class="btn small" id="edClose">Listo</button></h2>
+    <div class="edhead">
+      <h2 id="edTitle">Tarjeta</h2>
+      <div class="seg" id="edSideSeg"></div>
+      <button class="btn small" id="edClose">Listo</button>
+    </div>
     <div class="edgrid">
-    <div class="edmain">
-    <div class="seg" id="edSideSeg" style="justify-content:center"></div>
-    <canvas id="edCanvas"></canvas>
-    <p class="hint" style="text-align:center;margin:0">Arrastrá la imagen para acomodarla. Con Alejar la achicás y alrededor se ve el fondo del dorso.</p>
-    <p class="hint" id="edRes" style="text-align:center;margin:0"></p>
-    <div id="edBackChoice" class="seg" style="justify-content:center"></div>
-    <div class="tools" id="edTools">
-      <button data-act="change">Cambiar imagen</button>
-      <button data-act="rotate">Girar ↻</button>
-      <button data-act="zin">Acercar</button>
-      <button data-act="zout">Alejar</button>
-      <button data-act="reset">Centrar</button>
-      <button data-act="key">Quitar un color</button>
-    </div>
-    <div class="tools">
-      <button data-act="left">← Antes</button>
-      <button data-act="right">Después →</button>
-      <button data-act="dup">Duplicar</button>
-      <button data-act="del" id="edDel">Eliminar</button>
-    </div>
-    </div>
-    <aside class="edside" id="adjDet" aria-label="Luz y color">
-      <h3>Luz y color</h3>
-      <div id="adjBox"></div>
-    </aside>
+      <div class="edmain">
+        <canvas id="edCanvas" title="Arrastrá la imagen para acomodarla"></canvas>
+        <div id="edBackChoice" class="seg" style="justify-content:center"></div>
+        <p class="edres" id="edRes"></p>
+      </div>
+      <div class="edbar" role="toolbar" aria-label="Herramientas">
+        <div class="tools" id="edTools">
+        <button data-act="change" title="Cambiar imagen" aria-label="Cambiar imagen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg></button>
+        <button data-act="rotate" title="Girar 90°" aria-label="Girar 90°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
+        <button data-act="zin" title="Acercar" aria-label="Acercar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg></button>
+        <button data-act="zout" title="Alejar (alrededor se ve el fondo del dorso)" aria-label="Alejar (alrededor se ve el fondo del dorso)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
+        <button data-act="reset" title="Centrar y tamaño original" aria-label="Centrar y tamaño original"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><circle cx="12" cy="12" r="2.5"/></svg></button>
+        <button data-act="key" title="Quitar un color (fondo de un logo, etc.)" aria-label="Quitar un color (fondo de un logo, etc.)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5M4 20l9.5-9.5M12 6l6 6"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/></svg></button>
+        </div>
+        <div class="tools" id="edCardTools">
+        <button data-act="left" title="Mover antes" aria-label="Mover antes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="5" width="9" height="14" rx="1.5"/><path d="M9 12H3M6 9l-3 3 3 3"/></svg></button>
+        <button data-act="right" title="Mover después" aria-label="Mover después"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="9" height="14" rx="1.5"/><path d="M15 12h6M18 9l3 3-3 3"/></svg></button>
+        <button data-act="dup" title="Duplicar tarjeta" aria-label="Duplicar tarjeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/></svg></button>
+        <button data-act="del" title="Eliminar tarjeta (tocá dos veces)" aria-label="Eliminar tarjeta (tocá dos veces)" id="edDel" class="danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+        </div>
+      </div>
+      <aside class="edside" id="adjDet" aria-label="Luz y color">
+        <h3>Luz y color</h3>
+        <div id="adjBox"></div>
+      </aside>
     </div>
   </div>
 </div>
@@ -1320,8 +1342,9 @@ function renderEditor(){
   } else choice.style.display = "none";
   const ref = edRef();
   $("edTools").style.display = ref ? "" : "none";
-  document.querySelectorAll('#editor [data-act="left"],#editor [data-act="right"],#editor [data-act="dup"],#editor [data-act="del"]').forEach(b => b.style.display = common ? "none" : "");
+  $("edCardTools").style.display = common ? "none" : "";
   const cv = $("edCanvas"), sz = size(), dpr = devicePixelRatio || 1;
+  cv.style.aspectRatio = `${sz.w}/${sz.h}`;
   const W = Math.round((cv.clientWidth || 250)*dpr), H = Math.round(W*sz.h/sz.w);
   if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
   const ctx = cv.getContext("2d"), R = {x:0, y:0, w:W, h:H};
@@ -1329,13 +1352,13 @@ function renderEditor(){
   if (common) drawRef(ctx, state.commonBack, R); else drawFace(ctx, card, ed.side, R, R, ed.idx);
   $("adjDet").hidden = !ref; adjUI.sync();
   const d = ref ? dpiOf(ref) : Infinity;
-  $("edRes").textContent = isFinite(d) ? `Resolución al imprimir: ${Math.round(d)} ppp${d < LOW_DPI ? ". Es baja: se puede ver pixelada" : ""}` : "";
+  $("edRes").textContent = isFinite(d) ? `${Math.round(d)} ppp al imprimir${d < LOW_DPI ? " · ⚠ baja: se puede ver pixelada" : ""}` : "";
   $("edRes").classList.toggle("lowres", d < LOW_DPI);
   const miss = [ref, common ? null : card.front, common ? null : card.back].filter(Boolean).map(r => r.photoId).filter(needsFull);
   if (miss.length) ensureFull(miss).then(() => { if (ed) renderEditor(); });
 }
 document.querySelectorAll("#editor .tools").forEach(t => t.addEventListener("click", e => {
-  const act = e.target.dataset.act; if (!act || !ed) return;
+  const b = e.target.closest("[data-act]"), act = b && b.dataset.act; if (!act || !ed) return;
   const ref = edRef(), cards = state.cards, i = ed.idx;
   if (act === "change"){
     pickOne(nr => {
@@ -1366,8 +1389,8 @@ document.querySelectorAll("#editor .tools").forEach(t => t.addEventListener("cli
   }
   if (act === "del" && i >= 0){
     const btn = $("edDel");
-    if (!btn.dataset.armed){ btn.dataset.armed = "1"; btn.textContent = "¿Seguro?"; setTimeout(() => { delete btn.dataset.armed; btn.textContent = "Eliminar"; }, 3000); return; }
-    delete btn.dataset.armed; btn.textContent = "Eliminar";
+    if (!btn.dataset.armed){ btn.dataset.armed = "1"; btn.classList.add("armed"); toast("Tocá de nuevo el tacho para eliminar la tarjeta."); setTimeout(() => { delete btn.dataset.armed; btn.classList.remove("armed"); }, 3000); return; }
+    delete btn.dataset.armed; btn.classList.remove("armed");
     cards.splice(i, 1); closeEditor(); return;
   }
   renderEditor();

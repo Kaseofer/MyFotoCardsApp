@@ -289,8 +289,8 @@
   const ADJ = [["b", "Brillo"], ["c", "Contraste"], ["s", "Sombras"], ["v", "Intensidad de color"]];
   function adjustPanel(box, {get, set, begin, end, all, reset}){
     box.classList.add("adjpanel");
-    box.innerHTML = ADJ.map(([k, l]) => `<label class="adjrow"><span>${l}</span><input type="range" min="-100" max="100" step="1" value="0" data-k="${k}" aria-label="${l}"><output>0</output></label>`).join("")
-      + `<p class="hint adjhint">Sombras: hacia la derecha aclara las partes oscuras sin quemar las claras. Intensidad de color: hacia la derecha colores más vivos; todo a la izquierda, blanco y negro. Doble clic en un control lo vuelve a 0.</p>`
+    const TIPS = {b:"Aclara u oscurece toda la foto", c:"Separa más (o menos) los oscuros de los claros", s:"Hacia la derecha aclara las partes oscuras sin quemar las claras", v:"Hacia la derecha colores más vivos; todo a la izquierda, blanco y negro"};
+    box.innerHTML = ADJ.map(([k, l]) => `<label class="adjrow" title="${TIPS[k]}. Doble clic: vuelve a 0."><span>${l}</span><input type="range" min="-100" max="100" step="1" value="0" data-k="${k}" aria-label="${l}"><output>0</output></label>`).join("")
       + `<div class="adjbtns"><button type="button" data-a="reset">Restablecer</button><button type="button" data-a="all">Aplicar a todas</button></div>`;
     let active = false;
     const resetBtn = box.querySelector('[data-a="reset"]');
