@@ -58,6 +58,15 @@ h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem
 .modehead{font-size:1.05rem!important;border-bottom:1px solid var(--line);padding-bottom:4px}
 .pitem canvas.pthumb{width:40px;height:56px}
 #grid{position:relative}
+.adjdet{border:1px solid var(--line);border-radius:12px;padding:4px 12px}
+.adjdet summary{cursor:pointer;font-weight:600;padding:6px 0}
+.adjpanel{display:grid;gap:6px;padding:4px 0 8px}
+.adjrow{display:grid;grid-template-columns:84px minmax(0,1fr) 40px;align-items:center;gap:8px}
+.adjrow output{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.adjhint{margin:0}
+.adjbtns{display:flex;gap:6px;flex-wrap:wrap}
+.adjbtns button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.adjbtns button:disabled{opacity:.45;cursor:default}
 .grid.sorting .pc-flip{touch-action:none;cursor:grab}
 .grid.sorting .pc-inner{animation:wiggle .9s ease-in-out infinite alternate}
 @keyframes wiggle{from{transform:rotate(-.6deg)}to{transform:rotate(.6deg)}}
@@ -401,6 +410,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
       <button data-act="reset">Centrar</button>
       <button data-act="key">Quitar un color</button>
     </div>
+    <details class="adjdet" id="adjDet"><summary>Brillo, contraste y sombras</summary><div id="adjBox"></div></details>
     <div class="tools">
       <button data-act="left">← Antes</button>
       <button data-act="right">Después →</button>
@@ -613,7 +623,8 @@ const sheetCount = () => Math.max(1, Math.ceil(state.cards.length / perSheet()))
 
 /* ---------- dibujo de caras ---------- */
 function geom(ref, rw, rh){
-  const src = imgOf(ref.photoId);
+  let src = imgOf(ref.photoId);
+  if (MFC.hasAdj(ref.adj)){ const ph = photos.get(ref.photoId); src = src === ph.src ? MFC.adjusted(src, ref.adj, ref.photoId, {holder:ph}) : MFC.adjusted(src, ref.adj, ref.photoId); }
   const turned = (ref.rot||0) % 180 !== 0;
   const iw = turned ? src.height : src.width, ih = turned ? src.width : src.height;
   const sc = Math.max(rw/iw, rh/ih) * (ref.zoom||1);
@@ -1303,6 +1314,7 @@ function renderEditor(){
   const ctx = cv.getContext("2d"), R = {x:0, y:0, w:W, h:H};
   ctx.clearRect(0,0,W,H);
   if (common) drawRef(ctx, state.commonBack, R); else drawFace(ctx, card, ed.side, R, R, ed.idx);
+  $("adjDet").hidden = !ref; adjUI.sync();
   const d = ref ? dpiOf(ref) : Infinity;
   $("edRes").textContent = isFinite(d) ? `Resolución al imprimir: ${Math.round(d)} ppp${d < LOW_DPI ? ". Es baja: se puede ver pixelada" : ""}` : "";
   $("edRes").classList.toggle("lowres", d < LOW_DPI);
@@ -1347,6 +1359,21 @@ document.querySelectorAll("#editor .tools").forEach(t => t.addEventListener("cli
   }
   renderEditor();
 }));
+/* brillo, contraste y sombras de la imagen que se está editando */
+const adjUI = MFC.adjustPanel($("adjBox"), {
+  get: () => (ed && edRef()) ? edRef().adj || null : null,
+  set: a => { const r = ed && edRef(); if (r){ r.adj = a; renderEditor(); } },
+  end: () => scheduleGrid(),
+  reset: () => { const r = ed && edRef(); if (r){ r.adj = null; renderEditor(); scheduleGrid(); } },
+  all: () => {
+    const r = ed && edRef(); if (!r) return;
+    if (ed.idx < 0){ toast("El dorso de la colección ya es uno solo para todas."); return; }
+    const side = ed.side; let k = 0;
+    state.cards.forEach(c => { const o = side === "front" ? c.front : c.back; if (o){ o.adj = r.adj ? {...r.adj} : null; k++; } });
+    renderEditor(); scheduleGrid();
+    toast(r.adj ? `Mismo ajuste en ${k} ${side === "front" ? "frentes" : "dorsos propios"}.` : `Ajustes quitados de ${k} ${side === "front" ? "frentes" : "dorsos propios"}.`);
+  }
+});
 let drag = null;
 const edCv = $("edCanvas");
 edCv.addEventListener("pointerdown", e => { if (!ed || !edRef()) return; drag = {x:e.clientX, y:e.clientY}; edCv.setPointerCapture(e.pointerId); });

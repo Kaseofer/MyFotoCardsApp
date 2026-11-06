@@ -233,6 +233,87 @@
     });
   }
 
-  window.MFC = {MODES, openDb, reqP, doneP, remember, recall, listProjects, thumb, openIn, listGroups, groupLabel,
+  /* ---------- brillo, contraste y sombras ----------
+     Se guardan como valores de -1 a 1 en cada foto ({b, c, s}) y se aplican al dibujar: la foto
+     original nunca se toca. Se calcula píxel por píxel con una tabla de 256 valores (Safari de
+     iPhone no tiene filtros en el canvas). */
+  const hasAdj = a => !!a && !!(a.b || a.c || a.s);
+  function adjLut(a){
+    const t = new Uint8ClampedArray(256), b = a.b || 0, c = a.c || 0, sh = a.s || 0;
+    const f = c >= 0 ? 1 + c*1.5 : 1 + c*0.8;
+    for (let i = 0; i < 256; i++){
+      let x = i/255;
+      x += sh*0.35*6.75*x*(1-x)*(1-x); // sombras: actúa sobre los tonos oscuros (máximo en 1/3), casi nada en las luces
+      x += b*0.35;
+      x = (x - 0.5)*f + 0.5;
+      t[i] = Math.round(x*255);
+    }
+    return t;
+  }
+  const adjCache = new Map(), ADJ_BUDGET = 16e6; // píxeles en memoria para las versiones ajustadas
+  let adjPixels = 0;
+  // src: imagen o canvas; id: para reconocerla; opt.max: achicar antes (vista previa); opt.holder: guarda ahí la versión ajustada (miniaturas)
+  function adjusted(src, a, id, opt = {}){
+    if (!hasAdj(a) || !src || !src.width) return src;
+    const k = `${id}|${src.width}x${src.height}|${opt.max || 0}|${a.b || 0},${a.c || 0},${a.s || 0}`;
+    if (opt.holder && opt.holder.__adj && opt.holder.__adj.k === k) return opt.holder.__adj.c;
+    const hit = adjCache.get(k);
+    if (hit){ adjCache.delete(k); adjCache.set(k, hit); return hit; }
+    let w = src.width, h = src.height;
+    if (opt.max && Math.max(w, h) > opt.max){ const r = opt.max/Math.max(w, h); w = Math.max(1, Math.round(w*r)); h = Math.max(1, Math.round(h*r)); }
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", {willReadFrequently:true});
+    x.drawImage(src, 0, 0, w, h);
+    try {
+      const d = x.getImageData(0, 0, w, h), p = d.data, t = adjLut(a);
+      for (let i = 0; i < p.length; i += 4){ p[i] = t[p[i]]; p[i+1] = t[p[i+1]]; p[i+2] = t[p[i+2]]; }
+      x.putImageData(d, 0, 0);
+    } catch(_){ return src; }
+    if (opt.holder){ opt.holder.__adj = {k, c}; return c; }
+    adjCache.set(k, c); adjPixels += w*h;
+    for (const [kk, cc] of adjCache){
+      if (adjPixels <= ADJ_BUDGET) break;
+      if (kk === k) continue;
+      adjCache.delete(kk); adjPixels -= cc.width*cc.height;
+    }
+    return c;
+  }
+  // Panel con los tres controles. get() devuelve el ajuste actual, set(a) lo cambia,
+  // begin() se llama al empezar a mover un control (para el deshacer), end() al soltarlo.
+  const ADJ = [["b", "Brillo"], ["c", "Contraste"], ["s", "Sombras"]];
+  function adjustPanel(box, {get, set, begin, end, all, reset}){
+    box.classList.add("adjpanel");
+    box.innerHTML = ADJ.map(([k, l]) => `<label class="adjrow"><span>${l}</span><input type="range" min="-100" max="100" step="1" value="0" data-k="${k}" aria-label="${l}"><output>0</output></label>`).join("")
+      + `<p class="hint adjhint">Sombras: hacia la derecha aclara las partes oscuras sin quemar las claras; hacia la izquierda las oscurece.</p>`
+      + `<div class="adjbtns"><button type="button" data-a="reset">Restablecer</button><button type="button" data-a="all">Aplicar a todas</button></div>`;
+    let active = false;
+    const resetBtn = box.querySelector('[data-a="reset"]');
+    box.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("input", () => {
+        if (!active){ active = true; begin && begin(); }
+        const v = +inp.value; inp.nextElementSibling.textContent = v > 0 ? "+" + v : String(v);
+        const a = {...(get() || {}), [inp.dataset.k]: v/100};
+        set(hasAdj(a) ? a : null);
+        resetBtn.disabled = !hasAdj(get());
+      });
+      inp.addEventListener("change", () => { active = false; end && end(); });
+      inp.addEventListener("dblclick", () => { inp.value = 0; inp.dispatchEvent(new Event("input")); inp.dispatchEvent(new Event("change")); });
+    });
+    resetBtn.onclick = () => { reset(); sync(); };
+    box.querySelector('[data-a="all"]').onclick = () => { all(); sync(); };
+    function sync(){
+      const a = get() || {};
+      box.querySelectorAll("input").forEach(inp => {
+        if (document.activeElement === inp && active) return;
+        const v = Math.round((a[inp.dataset.k] || 0)*100);
+        inp.value = v; inp.nextElementSibling.textContent = v > 0 ? "+" + v : String(v);
+      });
+      resetBtn.disabled = !hasAdj(get());
+    }
+    sync();
+    return {sync};
+  }
+
+  window.MFC = {hasAdj, adjusted, adjustPanel, MODES, openDb, reqP, doneP, remember, recall, listProjects, thumb, openIn, listGroups, groupLabel,
     handoff, takeShared, exportAll, importAll, saveBlobLocal, safeName, initModeNav, renderOtherProjects, blobToDataURL, dataURLToBlob};
 })();

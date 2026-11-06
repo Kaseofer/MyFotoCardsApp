@@ -31,6 +31,7 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/. Las fotos no se suben a
 - **Guardado automático:** a lo sumo 2,5 s después del primer cambio, aunque se siga trabajando (y cada 30 s como respaldo, y al cerrar o cambiar de app o de modalidad). El símbolo al lado del nombre muestra el estado: ✓ guardado · ● cambios sin guardar · ◌ guardando · ⚠ no se pudo guardar. Tocarlo guarda en el momento.
 - **Al abrir** se carga el último proyecto con el que se trabajó. Los nuevos arrancan con la última configuración usada.
 - **Deshacer** (o Ctrl+Z).
+- **Brillo, contraste y sombras** de cada foto: en Hojas, en la barra de la foto elegida; en Photocards, en el editor de la tarjeta (frente o dorso propio). "Sombras" aclara u oscurece solo las partes oscuras. "Aplicar a todas" copia el ajuste a todas las fotos. La foto original no se modifica: el ajuste se aplica al dibujar y al exportar, así que se puede cambiar o quitar cuando se quiera.
 - **Memoria liviana:** en memoria hay miniaturas; las fotos completas se cargan solo para imprimir o encuadrar, así se pueden usar carpetas grandes en el teléfono.
 - **Aviso de baja resolución:** las fotos que saldrían impresas a menos de 150 ppp se marcan (solo en pantalla).
 

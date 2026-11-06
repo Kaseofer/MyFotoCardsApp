@@ -81,6 +81,16 @@ canvas#preview.grab{touch-action:none}
 .toolbar button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 12px;border-radius:999px;cursor:pointer}
 .toolbar button.hl{border-color:var(--accent);color:var(--accent);font-weight:600}
 .caprow{flex-basis:100%;display:grid;gap:4px;margin-top:4px}
+.adjdet{flex-basis:100%;border:1px solid var(--line);border-radius:12px;padding:4px 12px;background:var(--surface)}
+.adjdet summary{cursor:pointer;font-weight:600;padding:6px 0}
+.adjpanel{display:grid;gap:6px;padding:4px 0 8px}
+.adjrow{display:grid;grid-template-columns:84px minmax(0,1fr) 40px;align-items:center;gap:8px}
+.adjrow input{accent-color:var(--accent);width:100%}
+.adjrow output{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.adjhint{margin:0}
+.adjbtns{display:flex;gap:6px;flex-wrap:wrap}
+.adjbtns button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.adjbtns button:disabled{opacity:.45;cursor:default}
 .caprow input,.caprow select{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
 .dateinfo{color:var(--muted);font-size:.85rem;text-align:center}
 .status{text-align:center;color:var(--muted);font-size:.9rem;margin-top:8px;min-height:1.3em}
@@ -238,6 +248,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
       <button data-act="zout">Alejar</button>
       <button data-act="reset">Centrar</button>
       <button data-act="remove">Quitar</button>
+      <details class="adjdet" id="adjDet"><summary>Brillo, contraste y sombras</summary><div id="adjBox"></div></details>
       <div class="caprow"><input id="caption" type="text" maxlength="40" placeholder="Texto, por ejemplo: Bariloche 2023" aria-label="Texto de la foto"><select id="capPosOne" aria-label="Ubicación del texto en esta foto"><option value="">Ubicación: igual que el resto</option><option value="br">Abajo a la derecha</option><option value="bl">Abajo a la izquierda</option><option value="bc">Abajo al centro</option><option value="tr">Arriba a la derecha</option><option value="tl">Arriba a la izquierda</option><option value="marco">En el marco (solo polaroid)</option></select><div id="dateInfo" class="dateinfo"></div></div>
     </div>
     <div class="status" id="status"></div>
@@ -495,7 +506,9 @@ function render(ctx, s, page, ui, hi){
       const x0 = pr.x*s - g.ex*sl.fx, y0 = pr.y*s - g.ey*sl.fy;
       ctx.translate(x0 + g.dw/2, y0 + g.dh/2);
       ctx.rotate((sl.rot||0) * Math.PI/180);
-      const src = (hi && hi.get(sl.id)) || (ui === "full" && fullCache.get(sl.id)) || sl.thumb;
+      let src = (hi && hi.get(sl.id)) || (ui === "full" && fullCache.get(sl.id)) || sl.thumb;
+      // brillo, contraste y sombras: en pantalla con una versión mediana; al exportar, con la foto completa
+      if (MFC.hasAdj(sl.adj)) src = src === sl.thumb ? MFC.adjusted(src, sl.adj, sl.id, {holder:sl}) : MFC.adjusted(src, sl.adj, sl.id, hi ? {} : {max:1000});
       const w = sl.w*g.sc, h = sl.h*g.sc;
       ctx.drawImage(src, -w/2, -h/2, w, h);
       ctx.restore();
@@ -1015,6 +1028,7 @@ function updateToolbar(){
   else if (s.gps && usesPlace()) lines.push("Buscando el lugar…");
   else if (!s.gps && usesPlace()) lines.push("Esta foto no tiene ubicación guardada.");
   $("dateInfo").textContent = lines.join(" · ");
+  adjUI.sync();
   // resolución con la que va a salir impresa
   const li = state.sel - pageStart(state.page), cell = cells()[li];
   const ri = $("resInfo");
@@ -1026,6 +1040,20 @@ function updateToolbar(){
     ri.classList.toggle("warn", low);
   } else ri.textContent = "";
 }
+/* brillo, contraste y sombras de la foto elegida */
+const adjUI = MFC.adjustPanel($("adjBox"), {
+  get: () => slot(state.sel)?.adj || null,
+  begin: () => pushUndo(),
+  set: a => { const s = slot(state.sel); if (s){ s.adj = a; draw("page"); } },
+  end: () => draw(),
+  reset: () => { const s = slot(state.sel); if (s && s.adj){ pushUndo(); s.adj = null; draw(); } },
+  all: () => {
+    const s = slot(state.sel); if (!s) return;
+    pushUndo();
+    let k = 0; state.slots.forEach(o => { if (o){ o.adj = s.adj ? {...s.adj} : null; k++; } });
+    draw(); say(s.adj ? `Mismo brillo, contraste y sombras en las ${k} fotos.` : `Se quitaron los ajustes de las ${k} fotos.`);
+  }
+});
 $("caption").addEventListener("focus", () => { if (slot(state.sel)) pushUndo(); });
 $("caption").addEventListener("input", e => { const s = slot(state.sel); if (s){ s.caption = e.target.value; s.autoCap = false; draw("page"); } });
 $("capPosOne").addEventListener("change", e => { const s = slot(state.sel); if (s){ pushUndo(); s.pos = e.target.value || null; draw("page"); } });
@@ -1204,7 +1232,7 @@ const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = (
 function record(){
   return {id:proj.id, name:proj.name, created:proj.created,
     settings:{...currentSettings(), pages:state.pages, orients:[...state.orients]},
-    slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, autoCap:sl.autoCap, gps:sl.gps || null, place:sl.place ?? null, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h} : null)};
+    slots: state.slots.map(sl => sl ? {photoId:sl.id, fx:sl.fx, fy:sl.fy, zoom:sl.zoom, rot:sl.rot, date:sl.date, caption:sl.caption, autoCap:sl.autoCap, gps:sl.gps || null, place:sl.place ?? null, pos:sl.pos, name:sl.name, w:sl.w, h:sl.h, adj:sl.adj || null} : null)};
 }
 // Los guardados se encolan: nunca corren dos a la vez y "Guardar ahora" no se pierde
 let saveChain = Promise.resolve();
