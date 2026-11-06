@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="common.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -148,11 +149,21 @@ canvas#preview.grab{touch-action:none}
 .pitem button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 11px;cursor:pointer;white-space:nowrap}
 .pitem button.open{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .empty{color:var(--muted);text-align:center;padding:14px}
+.modes{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;width:fit-content;max-width:100%;margin:0 0 -8px;grid-column:1 / -1;order:-3}
+.modes a{font-weight:600;font-size:.9rem;text-decoration:none;color:var(--muted);padding:6px 12px;border-radius:999px;white-space:nowrap}
+.modes a[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+.ghead{margin:10px 0 2px;font-size:1rem}
+.ghead:first-child{margin-top:0}
+.modehead{font-size:1.05rem;border-bottom:1px solid var(--line);padding-bottom:4px}
+.pitem canvas.pthumb{width:40px;height:56px;border-radius:4px;flex-shrink:0;background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.grprow{display:grid;gap:6px}
+select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="modes" aria-label="Modalidad"><a href="./" data-mode="hojas">Hojas de fotos</a><a href="photocards.html" data-mode="cards">Luli's Photocards</a></nav>
   <div>
     <h1>Hojas de fotos para imprimir</h1>
     <p class="lead">Cargá una carpeta entera y se reparten solas en las hojas que hagan falta. Las fotos se quedan en tu dispositivo.</p>
@@ -169,6 +180,7 @@ canvas#preview.grab{touch-action:none}
         <button class="btn primary" id="folderBtn">Abrir carpeta de fotos</button>
         <button class="btn" id="addBtn">Agregar fotos sueltas</button>
         <button class="btn" id="sortBtn">Ordenar todo por fecha</button>
+        <button class="btn" id="toCardsBtn" title="Arma una colección de Luli's Photocards con estas fotos">Hacer photocards con estas fotos</button>
       </div>
       <div class="group"><span class="glabel">Hoja</span><div class="seg" id="paperSeg"></div></div>
       <div class="group"><span class="glabel">Orientación de esta hoja</span><div class="seg" id="orientSeg"></div>
@@ -191,6 +203,11 @@ canvas#preview.grab{touch-action:none}
       <div class="group"><label class="check"><input type="checkbox" id="cuts" checked> Mostrar líneas finas de corte</label></div>
       <div class="group"><label class="check"><input type="checkbox" id="captions" checked> Escribir texto en las fotos (año o lugar)</label></div>
       <div class="group"><span class="glabel">Texto automático</span><div class="seg" id="autoSeg"></div>
+        <div class="grprow" id="groupRow" hidden style="margin-top:8px">
+          <select class="sel" id="grpSel" aria-label="Grupo"></select>
+          <select class="sel" id="albSel" aria-label="Álbum o set"></select>
+          <p class="hint" style="margin:0">Los grupos y álbumes se cargan en Luli's Photocards, en «Grupos».</p>
+        </div>
         <p class="hint" id="placeHint" hidden>El lugar sale de la ubicación GPS guardada en cada foto. Para saber el nombre se consulta OpenStreetMap con esas coordenadas; las fotos no se envían.</p></div>
       <div class="group"><span class="glabel">Ubicación del texto</span><div class="seg" id="posSeg"></div></div>
       <div class="group btns">
@@ -256,12 +273,17 @@ canvas#preview.grab{touch-action:none}
         <button class="btn" id="exportProjBtn">Descargar copia de este proyecto</button>
         <button class="btn" id="importProjBtn">Abrir una copia</button>
       </div>
+      <div class="btn-row">
+        <button class="btn" id="exportAllBtn">Copia de todo (las dos modalidades)</button>
+        <button class="btn" id="importAllBtn">Restaurar copia de todo</button>
+      </div>
       <p class="hint">Los proyectos se guardan en este navegador. La copia descargada sirve para no perderlos si se borran los datos del navegador o para pasarlos a otra computadora.</p>
       <button class="btn" id="projClose">Cerrar</button>
     </div>
   </div>
 </div>
 <input type="file" id="fileBackup" accept=".json,application/json" hidden>
+<input type="file" id="fileAll" hidden>
 
 <div class="overlay" id="overlay">
   <img id="overlayImg" alt="Hoja lista para imprimir">
@@ -290,7 +312,8 @@ const SIZES = [
 const ALL_LAYOUTS = [...LAYOUTS, ...SIZES];
 // Forma de cada foto: automática (llenan el espacio), apaisadas 3:2 o verticales 2:3
 const SHAPES = [{id:"auto", label:"Automática"}, {id:"h", label:"Apaisadas"}, {id:"v", label:"Verticales"}];
-const AUTOCAP = [{id:"year", label:"Año"}, {id:"place", label:"Lugar"}, {id:"both", label:"Lugar y año"}];
+const AUTOCAP = [{id:"year", label:"Año"}, {id:"place", label:"Lugar"}, {id:"both", label:"Lugar y año"}, {id:"group", label:"Grupo y álbum"}];
+const usesPlace = () => state.capAuto === "place" || state.capAuto === "both";
 const LOW_DPI = 150; // por debajo de esto la foto impresa se puede ver pixelada
 // Cada hoja tiene su propia orientación (state.orients[p]); state.orient es la que toman las hojas nuevas
 function orientOf(p = state.page){ return state.orients[p] || state.orient; }
@@ -304,7 +327,7 @@ const POS = [
   {id:"br", label:"Abajo derecha"}, {id:"bl", label:"Abajo izquierda"}, {id:"bc", label:"Abajo centro"},
   {id:"tr", label:"Arriba derecha"}, {id:"tl", label:"Arriba izquierda"}, {id:"marco", label:"En el marco"}
 ];
-const state = {paper:"a4", orient:"v", layout:"12", shape:"auto", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br", capAuto:"year",
+const state = {paper:"a4", orient:"v", layout:"12", shape:"auto", style:"polaroid", bg:"#ffffff", margin:5, gap:3, cuts:true, captions:true, capPos:"br", capAuto:"year", groupId:null, albumId:null, groupLabel:"",
   orients:["v"], slots:[], pages:1, page:0, sel:-1, moving:-1, flash:[]};
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -724,10 +747,34 @@ function buildUI(){
     : "Las fotos ocupan todo el espacio disponible.";
   seg($("styleSeg"), STYLES, "style");
   seg($("bgSeg"), BGS, "bg"); seg($("posSeg"), POS, "capPos"); seg($("autoSeg"), AUTOCAP, "capAuto");
-  $("placeHint").hidden = state.capAuto === "year";
+  $("placeHint").hidden = !usesPlace();
+  $("groupRow").hidden = state.capAuto !== "group";
+  if (state.capAuto === "group") fillGroupSel();
   $("marginOut").textContent = state.margin + " mm"; $("gapOut").textContent = state.gap + " mm";
   updateToolbar();
 }
+// Grupo y álbum de la biblioteca de Luli's Photocards
+let groupsCache = [];
+async function fillGroupSel(){
+  groupsCache = await MFC.listGroups();
+  const gs = $("grpSel"), as = $("albSel");
+  gs.innerHTML = '<option value="">Elegí un grupo</option>';
+  groupsCache.forEach(g => { const o = document.createElement("option"); o.value = g.id; o.textContent = g.name; gs.appendChild(o); });
+  gs.value = groupsCache.some(g => g.id === state.groupId) ? state.groupId : "";
+  const g = groupsCache.find(x => x.id === gs.value);
+  as.innerHTML = '<option value="">Sin álbum</option>';
+  (g ? g.albums : []).forEach(a => { const o = document.createElement("option"); o.value = a.id; o.textContent = a.name; as.appendChild(o); });
+  as.value = g && g.albums.some(a => a.id === state.albumId) ? state.albumId : "";
+  as.disabled = !g;
+}
+function pickGroup(){
+  const g = groupsCache.find(x => x.id === $("grpSel").value) || null, a = g && g.albums.find(x => x.id === $("albSel").value) || null;
+  state.groupId = g ? g.id : null; state.albumId = a ? a.id : null;
+  state.groupLabel = g ? (a ? `${g.name} · ${a.name}` : g.name) : "";
+  applyAutoCaptions(); fillGroupSel(); draw();
+}
+$("grpSel").onchange = () => { $("albSel").value = ""; pickGroup(); };
+$("albSel").onchange = pickGroup;
 ["margin","gap"].forEach(k => $(k).oninput = e => { relayout(() => { state[k] = parseFloat(e.target.value); }); buildUI(); draw(); });
 $("orientAll").onclick = () => { setPageOrient(orientOf(), true); say("Todas las hojas quedaron " + (orientOf() === "h" ? "horizontales." : "verticales.")); };
 $("cuts").onchange = e => { state.cuts = e.target.checked; draw(); };
@@ -782,6 +829,7 @@ function autoText(sl){
   const year = sl.date ? sl.date.slice(0,4) : "", place = sl.place || "";
   if (state.capAuto === "place") return place || year;
   if (state.capAuto === "both") return [place, year].filter(Boolean).join(" ");
+  if (state.capAuto === "group") return state.groupLabel || "";
   return year;
 }
 // Actualiza el texto de las fotos que no fueron escritas a mano
@@ -800,7 +848,7 @@ async function reverseGeocode(g){
   return a.city || a.town || a.village || a.municipality || a.county || a.state || "";
 }
 async function resolvePlaces(){
-  if (geoRunning || state.capAuto === "year") return;
+  if (geoRunning || !usesPlace()) return;
   const todo = state.slots.filter(sl => sl && sl.gps && sl.place == null);
   if (!todo.length) return;
   geoRunning = true;
@@ -808,7 +856,7 @@ async function resolvePlaces(){
   const keys = [...new Set(todo.map(sl => geoKey(sl.gps)))];
   try {
     for (let i = 0; i < keys.length; i++){
-      if (state.capAuto === "year") break;
+      if (!usesPlace()) break;
       const k = keys[i];
       let name = placeCache.get(k);
       if (name === undefined){
@@ -964,8 +1012,8 @@ function updateToolbar(){
   $("capPosOne").value = s.pos || "";
   const lines = [s.date ? "Fecha guardada en la foto: " + fmtDate(s.date) : "Esta foto no tiene fecha guardada (pasa seguido con fotos de WhatsApp o capturas)."];
   if (s.place) lines.push("Lugar: " + s.place);
-  else if (s.gps && state.capAuto !== "year") lines.push("Buscando el lugar…");
-  else if (!s.gps && state.capAuto !== "year") lines.push("Esta foto no tiene ubicación guardada.");
+  else if (s.gps && usesPlace()) lines.push("Buscando el lugar…");
+  else if (!s.gps && usesPlace()) lines.push("Esta foto no tiene ubicación guardada.");
   $("dateInfo").textContent = lines.join(" · ");
   // resolución con la que va a salir impresa
   const li = state.sel - pageStart(state.page), cell = cells()[li];
@@ -1242,7 +1290,8 @@ function remember(k, v){ try { localStorage.setItem(k, typeof v === "string" ? v
 function recall(k){ try { return localStorage.getItem(k); } catch(_){ return null; } }
 function currentSettings(){
   return {paper:state.paper, orient:state.orient, layout:state.layout, shape:state.shape, capAuto:state.capAuto, style:state.style, bg:state.bg,
-    margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos};
+    margin:state.margin, gap:state.gap, cuts:state.cuts, captions:state.captions, capPos:state.capPos,
+    groupId:state.groupId, albumId:state.albumId, groupLabel:state.groupLabel};
 }
 function rememberSettings(){ remember(LS_CONFIG, currentSettings()); }
 function lastSettings(){ try { return JSON.parse(recall(LS_CONFIG) || "null") || {}; } catch(_){ return {}; } }
@@ -1250,7 +1299,8 @@ async function listProjects(){ const d = await db(); return (await reqP(d.transa
 
 function applySettings(st){
   Object.assign(state, {paper:st.paper||"a4", orient:st.orient||"v", layout:ALL_LAYOUTS.some(l => l.id === st.layout) ? st.layout : "12", shape:SHAPES.some(x => x.id === st.shape) ? st.shape : "auto", capAuto:st.capAuto||"year", style:st.style||"polaroid", bg:st.bg||"#ffffff", margin:st.margin ?? 5, gap:st.gap ?? 3,
-    cuts:st.cuts ?? true, captions:st.captions ?? true, capPos:st.capPos||"br", pages:st.pages||1});
+    cuts:st.cuts ?? true, captions:st.captions ?? true, capPos:st.capPos||"br", pages:st.pages||1,
+    groupId:st.groupId || null, albumId:st.albumId || null, groupLabel:st.groupLabel || ""});
   // proyectos anteriores no tienen orientación por hoja: todas como la general
   state.orients = Array.isArray(st.orients) && st.orients.length ? st.orients.map(o => o === "h" ? "h" : "v") : Array(state.pages).fill(state.orient);
   $("margin").value = state.margin; $("gap").value = state.gap;
@@ -1331,10 +1381,10 @@ window.addEventListener("pagehide", () => saveProject());
 
 /* lista de proyectos */
 async function renderProjectList(){
-  const box = $("plist"); box.innerHTML = "";
+  const box = $("plist"); box.innerHTML = '<h3 class="ghead modehead">Hojas de fotos</h3>';
   let list = [];
   try { list = await listProjects(); } catch(_){}
-  if (!list.length){ box.innerHTML = '<div class="empty">Todavía no hay proyectos guardados.</div>'; return; }
+  if (!list.length) box.insertAdjacentHTML("beforeend", '<div class="empty">Todavía no hay proyectos guardados.</div>');
   list.forEach(p => {
     const it = document.createElement("div");
     it.className = "pitem" + (proj && p.id === proj.id ? " cur" : "");
@@ -1357,9 +1407,12 @@ async function renderProjectList(){
       if (wasCurrent){ proj = null; const rest = await listProjects(); if (rest.length) await openProject(rest[0].id); else await newProject(); }
       renderProjectList();
     };
-    it.append(info, open, del);
+    const cv = document.createElement("canvas"); cv.className = "pthumb";
+    MFC.thumb(cv, {mode:"hojas", thumbId:(p.slots || []).find(Boolean)?.photoId});
+    it.append(cv, info, open, del);
     box.appendChild(it);
   });
+  await MFC.renderOtherProjects(box, "cards");
 }
 async function openProjects(){ await saveProject(); $("projModal").classList.add("on"); renderProjectList(); }
 function closeProjects(){ $("projModal").classList.remove("on"); }
@@ -1392,6 +1445,32 @@ function dataURLToBlob(u){
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return new Blob([arr], {type:mime});
 }
+$("exportAllBtn").onclick = async () => {
+  await saveProject();
+  const btn = $("exportAllBtn"), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Preparando copia…";
+  try {
+    const blob = await MFC.exportAll(n => btn.textContent = `Preparando copia… ${n}`);
+    MFC.saveBlobLocal(blob, `myfotocards-todo-${new Date().toISOString().slice(0,10)}.ndjson`); say("Copia de todo descargada.");
+  } catch(_){ say("No se pudo preparar la copia.", 4000); }
+  finally { btn.disabled = false; btn.textContent = label; }
+};
+$("importAllBtn").onclick = () => $("fileAll").click();
+$("fileAll").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  await saveProject();
+  try { const r = await MFC.importAll(f); say(`Listo: ${r.projects} proyectos restaurados.`); setTimeout(() => location.reload(), 900); }
+  catch(_){ say("Ese archivo no es una copia de todo de MyFotoCards.", 4000); }
+};
+$("toCardsBtn").onclick = async () => {
+  const slots = state.slots.filter(Boolean);
+  if (!slots.length){ say("Agregá al menos una foto."); return; }
+  await saveProject();
+  say("Pasando las fotos a Luli's Photocards…", 60000);
+  const files = slots.map((sl, i) => new File([sl.blob], sl.name || `foto-${i+1}.jpg`, {type:sl.blob.type || "image/jpeg"}));
+  try { await MFC.handoff("cards", files, {name:proj.name, groupId:state.groupId, albumId:state.albumId}); }
+  catch(_){ say("No se pudieron pasar las fotos.", 4000); }
+};
 $("importProjBtn").onclick = () => $("fileBackup").click();
 $("fileBackup").onchange = async e => {
   const f = e.target.files[0]; e.target.value = "";
@@ -1420,40 +1499,44 @@ $("fileBackup").onchange = async e => {
 window.addEventListener("resize", draw);
 buildUI(); draw(); setSaveState("saving"); // mientras abre el último proyecto
 (async () => {
+  const q = new URLSearchParams(location.search);
+  // fotos compartidas desde la galería: van a la última modalidad que se usó
+  if (q.has("compartidas") && !q.has("nuevo") && MFC.recall("mfc-modo") === "cards"){
+    location.replace("photocards.html" + location.search); return;
+  }
+  MFC.initModeNav("hojas", () => saveProject());
   try { await navigator.storage?.persist?.(); } catch(_){}
+  const wantId = q.get("p");
+  const shared = await MFC.takeShared();
+  if (wantId) history.replaceState(null, "", location.pathname);
   try {
     const list = await listProjects(), last = recall(LS_LAST);
-    const pick = list.find(p => p.id === last) || list[0]; // el último con el que se trabajó
-    if (pick) await openProject(pick.id); else await newProject();
+    const pick = list.find(p => p.id === wantId) || list.find(p => p.id === last) || list[0]; // el último con el que se trabajó
+    if (shared && shared.name){
+      await newProject();
+      proj.name = shared.name; $("projName").value = proj.name;
+      if (shared.groupId){
+        state.groupId = shared.groupId; state.albumId = shared.albumId || null;
+        state.groupLabel = await MFC.groupLabel(state.groupId, state.albumId);
+        if (state.groupLabel) state.capAuto = "group";
+      }
+      buildUI(); draw();
+    } else if (pick) await openProject(pick.id); else await newProject();
   } catch(_){
     dbOk = false; proj = {id:newId("p"), name:"Proyecto 1", created:Date.now()};
     applySettings({...lastSettings(), pages:1}); buildUI(); draw();
     $("projName").value = proj.name; setSaveState("error");
   }
-  await takeSharedPhotos();
+  if (shared){
+    if (shared.files.length) await addFiles(shared.files);
+    else say("No llegaron fotos. Probá compartirlas de nuevo.", 4000);
+  }
 })();
 
 /* ---------- app instalable: funciona sin conexión y recibe fotos compartidas ---------- */
 const swAllowed = location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname);
 if ("serviceWorker" in navigator && swAllowed){
   try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch(_){}
-}
-// Android: al compartir fotos desde la galería, el service worker las deja guardadas y abre la app con ?compartidas=1
-async function takeSharedPhotos(){
-  if (!new URLSearchParams(location.search).has("compartidas")) return;
-  history.replaceState(null, "", location.pathname);
-  try {
-    const c = await caches.open("compartidas");
-    const files = [];
-    for (const req of await c.keys()){
-      const res = await c.match(req);
-      const name = decodeURIComponent(res.headers.get("X-Nombre") || "foto.jpg");
-      files.push(new File([await res.blob()], name, {type: res.headers.get("Content-Type") || ""}));
-    }
-    await caches.delete("compartidas");
-    if (files.length) await addFiles(files);
-    else say("No llegaron fotos. Probá compartirlas de nuevo.", 4000);
-  } catch(_){ say("No se pudieron recibir las fotos compartidas.", 4000); }
 }
 try { document.fonts.load("500 40px Caveat").then(draw).catch(() => {}); } catch(_){}
 </script>

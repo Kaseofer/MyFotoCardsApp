@@ -1,12 +1,12 @@
-/* Service worker de MyFotoCards
+/* Service worker de MyFotoCards (Hojas de fotos y Luli's Photocards)
    - Guarda la app para que abra sin internet.
    - La página se pide primero a la red (así siempre llega la última versión) y,
      si no hay conexión, se usa la copia guardada.
    - Recibe las fotos que se comparten desde la galería (Android) y se las pasa a la página. */
-const VERSION = "v1";
+const VERSION = "v2";
 const APP = `app-${VERSION}`, RUNTIME = "runtime", SHARED = "compartidas";
 const CORE = [
-  "./", "./index.html", "./manifest.webmanifest",
+  "./", "./index.html", "./photocards.html", "./common.js", "./manifest.webmanifest",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png",
 ];
 const JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -28,16 +28,22 @@ self.addEventListener("activate", e => {
   })());
 });
 
+// Cada página se guarda con su propio nombre (sin ?parámetros); "./" es index.html
+function cacheKey(req){
+  const u = new URL(req.url); u.search = ""; u.hash = "";
+  if (u.pathname.endsWith("/")) u.pathname += "index.html";
+  return u.href;
+}
 async function networkFirst(req){
-  const c = await caches.open(APP);
+  const c = await caches.open(APP), key = cacheKey(req);
   try {
     const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 5000);
     const res = await fetch(req, {signal: ctrl.signal});
     clearTimeout(t);
-    if (res.ok) c.put(req.mode === "navigate" ? "./index.html" : req, res.clone());
+    if (res.ok && !res.redirected) c.put(key, res.clone());
     return res;
   } catch (_) {
-    return (await c.match(req.mode === "navigate" ? "./index.html" : req, {ignoreSearch: true}))
+    return (await c.match(key))
       || (await c.match("./index.html"))
       || new Response("Sin conexión", {status: 503, headers: {"Content-Type": "text/plain; charset=utf-8"}});
   }
@@ -76,8 +82,8 @@ self.addEventListener("fetch", e => {
   }
   if (req.method !== "GET") return;
   if (url.origin === location.origin){
-    // index.html y el manifiesto siempre frescos; íconos y demás desde la copia
-    if (req.mode === "navigate" || url.pathname.endsWith("/index.html") || url.pathname.endsWith(".webmanifest")) e.respondWith(networkFirst(req));
+    // páginas, código y manifiesto siempre frescos; íconos y demás desde la copia
+    if (req.mode === "navigate" || /\.(html|js|webmanifest)$/.test(url.pathname)) e.respondWith(networkFirst(req));
     else e.respondWith(caches.match(req).then(r => r || fetch(req)));
     return;
   }
