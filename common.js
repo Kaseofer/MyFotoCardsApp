@@ -237,7 +237,7 @@
      Se guardan como valores de -1 a 1 en cada foto ({b, c, s}) y se aplican al dibujar: la foto
      original nunca se toca. Se calcula píxel por píxel con una tabla de 256 valores (Safari de
      iPhone no tiene filtros en el canvas). */
-  const hasAdj = a => !!a && !!(a.b || a.c || a.s);
+  const hasAdj = a => !!a && !!(a.b || a.c || a.s || a.v);
   function adjLut(a){
     const t = new Uint8ClampedArray(256), b = a.b || 0, c = a.c || 0, sh = a.s || 0;
     const f = c >= 0 ? 1 + c*1.5 : 1 + c*0.8;
@@ -255,7 +255,7 @@
   // src: imagen o canvas; id: para reconocerla; opt.max: achicar antes (vista previa); opt.holder: guarda ahí la versión ajustada (miniaturas)
   function adjusted(src, a, id, opt = {}){
     if (!hasAdj(a) || !src || !src.width) return src;
-    const k = `${id}|${src.width}x${src.height}|${opt.max || 0}|${a.b || 0},${a.c || 0},${a.s || 0}`;
+    const k = `${id}|${src.width}x${src.height}|${opt.max || 0}|${a.b || 0},${a.c || 0},${a.s || 0},${a.v || 0}`;
     if (opt.holder && opt.holder.__adj && opt.holder.__adj.k === k) return opt.holder.__adj.c;
     const hit = adjCache.get(k);
     if (hit){ adjCache.delete(k); adjCache.set(k, hit); return hit; }
@@ -266,7 +266,13 @@
     x.drawImage(src, 0, 0, w, h);
     try {
       const d = x.getImageData(0, 0, w, h), p = d.data, t = adjLut(a);
-      for (let i = 0; i < p.length; i += 4){ p[i] = t[p[i]]; p[i+1] = t[p[i+1]]; p[i+2] = t[p[i+2]]; }
+      // intensidad de color: -1 = blanco y negro, +1 = el doble de color (cada píxel se aleja o acerca a su gris)
+      const v = a.v || 0, k2 = v >= 0 ? 1 + v : 1 + v;
+      if (!v) for (let i = 0; i < p.length; i += 4){ p[i] = t[p[i]]; p[i+1] = t[p[i+1]]; p[i+2] = t[p[i+2]]; }
+      else for (let i = 0; i < p.length; i += 4){
+        const r = t[p[i]], g = t[p[i+1]], bl = t[p[i+2]], gr = 0.299*r + 0.587*g + 0.114*bl;
+        p[i] = gr + (r - gr)*k2; p[i+1] = gr + (g - gr)*k2; p[i+2] = gr + (bl - gr)*k2; // Uint8Clamped recorta solo
+      }
       x.putImageData(d, 0, 0);
     } catch(_){ return src; }
     if (opt.holder){ opt.holder.__adj = {k, c}; return c; }
@@ -280,11 +286,11 @@
   }
   // Panel con los tres controles. get() devuelve el ajuste actual, set(a) lo cambia,
   // begin() se llama al empezar a mover un control (para el deshacer), end() al soltarlo.
-  const ADJ = [["b", "Brillo"], ["c", "Contraste"], ["s", "Sombras"]];
+  const ADJ = [["b", "Brillo"], ["c", "Contraste"], ["s", "Sombras"], ["v", "Intensidad de color"]];
   function adjustPanel(box, {get, set, begin, end, all, reset}){
     box.classList.add("adjpanel");
     box.innerHTML = ADJ.map(([k, l]) => `<label class="adjrow"><span>${l}</span><input type="range" min="-100" max="100" step="1" value="0" data-k="${k}" aria-label="${l}"><output>0</output></label>`).join("")
-      + `<p class="hint adjhint">Sombras: hacia la derecha aclara las partes oscuras sin quemar las claras; hacia la izquierda las oscurece.</p>`
+      + `<p class="hint adjhint">Sombras: hacia la derecha aclara las partes oscuras sin quemar las claras. Intensidad de color: hacia la derecha colores más vivos; todo a la izquierda, blanco y negro. Doble clic en un control lo vuelve a 0.</p>`
       + `<div class="adjbtns"><button type="button" data-a="reset">Restablecer</button><button type="button" data-a="all">Aplicar a todas</button></div>`;
     let active = false;
     const resetBtn = box.querySelector('[data-a="reset"]');

@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<script src="common.js?v=3"></script>
+<script src="common.js?v=4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -58,8 +58,14 @@ h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem
 .modehead{font-size:1.05rem!important;border-bottom:1px solid var(--line);padding-bottom:4px}
 .pitem canvas.pthumb{width:40px;height:56px}
 #grid{position:relative}
-.adjdet{border:1px solid var(--line);border-radius:12px;padding:4px 12px}
-.adjdet summary{cursor:pointer;font-weight:600;padding:6px 0}
+.mcard.edcard{max-width:860px}
+.edgrid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
+.edmain{display:flex;flex-direction:column;gap:12px;min-width:0}
+.edside{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg);position:sticky;top:0}
+.edside h3{margin:0 0 6px;font-size:1rem}
+.edside .adjrow{grid-template-columns:minmax(0,1fr) 40px;row-gap:0}
+.edside .adjrow span{grid-column:1 / -1;font-weight:600;font-size:.92rem}
+@media (max-width:700px){.edgrid{grid-template-columns:minmax(0,1fr)}.edside{position:static}}
 .adjpanel{display:grid;gap:6px;padding:4px 0 8px}
 .adjrow{display:grid;grid-template-columns:84px minmax(0,1fr) 40px;align-items:center;gap:8px}
 .adjrow output{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -395,8 +401,10 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
 
 <!-- editor de tarjeta -->
 <div class="modal" id="editor" role="dialog" aria-label="Editar tarjeta">
-  <div class="mcard">
+  <div class="mcard edcard">
     <h2><span id="edTitle">Tarjeta</span><button class="btn small" id="edClose">Listo</button></h2>
+    <div class="edgrid">
+    <div class="edmain">
     <div class="seg" id="edSideSeg" style="justify-content:center"></div>
     <canvas id="edCanvas"></canvas>
     <p class="hint" style="text-align:center;margin:0">Arrastrá la imagen para acomodarla. Con Alejar la achicás y alrededor se ve el fondo del dorso.</p>
@@ -410,12 +418,17 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
       <button data-act="reset">Centrar</button>
       <button data-act="key">Quitar un color</button>
     </div>
-    <details class="adjdet" id="adjDet"><summary>Brillo, contraste y sombras</summary><div id="adjBox"></div></details>
     <div class="tools">
       <button data-act="left">← Antes</button>
       <button data-act="right">Después →</button>
       <button data-act="dup">Duplicar</button>
       <button data-act="del" id="edDel">Eliminar</button>
+    </div>
+    </div>
+    <aside class="edside" id="adjDet" aria-label="Luz y color">
+      <h3>Luz y color</h3>
+      <div id="adjBox"></div>
+    </aside>
     </div>
   </div>
 </div>

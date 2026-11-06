@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="common.js?v=3"></script>
+<script src="common.js?v=4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -84,7 +84,7 @@ canvas#preview.grab{touch-action:none}
 .adjdet{flex-basis:100%;border:1px solid var(--line);border-radius:12px;padding:4px 12px;background:var(--surface)}
 .adjdet summary{cursor:pointer;font-weight:600;padding:6px 0}
 .adjpanel{display:grid;gap:6px;padding:4px 0 8px}
-.adjrow{display:grid;grid-template-columns:84px minmax(0,1fr) 40px;align-items:center;gap:8px}
+.adjrow{display:grid;grid-template-columns:130px minmax(0,1fr) 40px;align-items:center;gap:8px}
 .adjrow input{accent-color:var(--accent);width:100%}
 .adjrow output{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
 .adjhint{margin:0}
@@ -248,7 +248,7 @@ select.sel{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var
       <button data-act="zout">Alejar</button>
       <button data-act="reset">Centrar</button>
       <button data-act="remove">Quitar</button>
-      <details class="adjdet" id="adjDet"><summary>Brillo, contraste y sombras</summary><div id="adjBox"></div></details>
+      <details class="adjdet" id="adjDet"><summary>Brillo, contraste, sombras y color</summary><div id="adjBox"></div></details>
       <div class="caprow"><input id="caption" type="text" maxlength="40" placeholder="Texto, por ejemplo: Bariloche 2023" aria-label="Texto de la foto"><select id="capPosOne" aria-label="Ubicación del texto en esta foto"><option value="">Ubicación: igual que el resto</option><option value="br">Abajo a la derecha</option><option value="bl">Abajo a la izquierda</option><option value="bc">Abajo al centro</option><option value="tr">Arriba a la derecha</option><option value="tl">Arriba a la izquierda</option><option value="marco">En el marco (solo polaroid)</option></select><div id="dateInfo" class="dateinfo"></div></div>
     </div>
     <div class="status" id="status"></div>
