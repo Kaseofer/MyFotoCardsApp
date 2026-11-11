@@ -1,7 +1,7 @@
 {
-  "name": "MyFotoCards: hojas de fotos y photocards",
+  "name": "MyFotoCards: Luli's Photocards",
   "short_name": "MyFotoCards",
-  "description": "Armá hojas de fotos estilo polaroid o photocards doble faz por grupo y álbum, listas para imprimir.",
+  "description": "Armá photocards doble faz por grupo y álbum, listas para imprimir. Incluye Hojas de fotos estilo polaroid como herramienta extra.",
   "lang": "es",
   "id": "./",
   "start_url": "./",
@@ -16,8 +16,8 @@
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Hojas de fotos", "short_name": "Hojas", "url": "./", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Luli's Photocards", "short_name": "Photocards", "url": "./photocards.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Luli's Photocards", "short_name": "Photocards", "url": "./", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Hojas de fotos", "short_name": "Hojas", "url": "./hojas.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ],
   "share_target": {
     "action": "./compartir",

@@ -1,9 +1,10 @@
-# MyFotoCards: hojas de fotos y photocards para imprimir
+# MyFotoCards: Luli's Photocards para imprimir
 
-Herramienta web con dos modalidades, que se eligen arriba de todo:
+Herramienta web para armar photocards:
 
-- **Hojas de fotos** (`index.html`): hojas A4, Carta o papel foto 10×15 con fotos estilo polaroid, borde fino o sin marco.
-- **Luli's Photocards** (`photocards.html`): photocards tipo K-pop con frente y dorso, organizadas por grupo y álbum, para imprimir en doble faz.
+- **Luli's Photocards** (`index.html`, la principal: es lo que abre la app): photocards tipo K-pop con frente y dorso, organizadas por grupo y álbum, para imprimir en doble faz.
+- **Hojas de fotos** (`hojas.html`, herramienta extra, desde Más opciones → «Hojas de fotos»): hojas A4, Carta o papel foto 10×15 con fotos estilo polaroid, borde fino o sin marco. Arriba tiene «← Luli's Photocards» para volver.
+- `photocards.html` quedó solo para que sigan andando los enlaces y accesos directos viejos: lleva a la principal.
 
 Publicada en https://kaseofer.github.io/MyFotoCardsApp/. Las fotos no se suben a ningún servidor: todo queda en el navegador de quien la usa.
 

@@ -1,12 +1,12 @@
-/* Service worker de MyFotoCards (Hojas de fotos y Luli's Photocards)
+/* Service worker de MyFotoCards (Luli's Photocards, la principal, y Hojas de fotos)
    - Guarda la app para que abra sin internet.
    - La página se pide primero a la red (así siempre llega la última versión) y,
      si no hay conexión, se usa la copia guardada.
    - Recibe las fotos que se comparten desde la galería (Android) y se las pasa a la página. */
-const VERSION = "v11";
+const VERSION = "v12";
 const APP = `app-${VERSION}`, RUNTIME = "runtime", SHARED = "compartidas";
 const CORE = [
-  "./", "./index.html", "./photocards.html", "./common.js?v=6", "./sync.js?v=7", "./manifest.webmanifest",
+  "./", "./index.html", "./hojas.html", "./photocards.html", "./common.js?v=7", "./sync.js?v=7", "./manifest.webmanifest",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png",
 ];
 const JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -28,7 +28,7 @@ self.addEventListener("activate", e => {
   })());
 });
 
-// Cada página se guarda con su propio nombre (sin ?parámetros); "./" es index.html
+// Cada página se guarda con su propio nombre (sin ?parámetros); "./" es index.html (Photocards)
 function cacheKey(req){
   const u = new URL(req.url); u.hash = "";
   if (!u.pathname.endsWith(".js")) u.search = ""; // common.js?v=N sí lleva la versión

@@ -1,13 +1,13 @@
 /* Código compartido por las dos modalidades de MyFotoCards:
-   - Hojas de fotos (index.html)  → base "hojas-fotos-a4"
-   - Luli's Photocards (photocards.html) → base "photocards-a4" (también guarda la biblioteca de grupos)
+   - Luli's Photocards (index.html, la principal) → base "photocards-a4"
+   - Hojas de fotos (hojas.html, herramienta extra)  → base "hojas-fotos-a4" (también guarda la biblioteca de grupos)
    Cada modalidad sigue usando su propia base; acá están las cosas que necesitan las dos:
    lista unificada de proyectos, biblioteca de grupos, copia de seguridad completa y
    pasar fotos de una modalidad a la otra. */
 (function(){
   const MODES = {
-    hojas: {db:"hojas-fotos-a4", version:1, page:"./", label:"Hojas de fotos"},
-    cards: {db:"photocards-a4", version:2, page:"photocards.html", label:"Luli's Photocards"}
+    hojas: {db:"hojas-fotos-a4", version:1, page:"hojas.html", label:"Hojas de fotos"},
+    cards: {db:"photocards-a4", version:2, page:"./", label:"Luli's Photocards"}
   };
   const upgrades = {
     hojas(d){
