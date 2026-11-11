@@ -63,7 +63,14 @@ h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem
 .mcard.edcard{width:auto;max-width:100%;padding:14px 16px 16px;gap:10px}
 .edhead{display:flex;align-items:center;gap:12px}
 .edhead h2{flex:1;margin:0;font-size:1.1rem}
-.edgrid{display:grid;grid-template-columns:auto 50px 270px;gap:14px;align-items:start}
+.edgrid{display:grid;grid-template-columns:auto;gap:14px;align-items:start;justify-content:center}
+.edgrid.more{grid-template-columns:auto 290px}
+.edmore{display:grid;gap:10px}
+.edmore[hidden]{display:none}
+.edtools.tools{justify-content:flex-start}
+.edtools.tools button,.zoomrow.tools button.txt{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.edtools.tools button svg,.zoomrow.tools button svg{width:19px;height:19px}
+#edMoreBtn[aria-expanded="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .edmain{display:flex;flex-direction:column;gap:6px;min-width:0}
 .edres{margin:0;text-align:center;font-size:.82rem;color:var(--muted)}
 .edbar{display:flex;flex-direction:column;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:5px}
@@ -81,7 +88,8 @@ h1{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.6rem
 .edside .adjrow span{grid-column:1 / -1;font-weight:600;font-size:.92rem}
 @media (max-width:760px){
   .mcard.edcard{width:100%}
-  .edgrid{grid-template-columns:minmax(0,1fr)}
+  .edgrid,.edgrid.more{grid-template-columns:minmax(0,1fr)}
+  .edtools.tools{justify-content:center}
   .edgrid{gap:10px}
   .edbar{flex-direction:row;justify-content:center;flex-wrap:wrap}
   .edbar .tools{flex-direction:row;flex-wrap:wrap;justify-content:center}
@@ -192,7 +200,7 @@ canvas#sheet{width:100%;max-width:min(460px,calc((100vh - 220px) * .7071));aspec
 .modal.on{display:flex}
 .mcard{background:var(--surface);color:var(--ink);border-radius:20px;width:100%;max-width:460px;max-height:100%;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 .mcard h2{margin:0;font-size:1.2rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
-#edCanvas{height:min(72vh,640px);width:auto;max-width:100%;display:block;margin:0 auto;border-radius:7%/4.5%;box-shadow:0 2px 12px rgba(42,29,58,.25);touch-action:none;cursor:grab;background:#fff}
+#edCanvas{height:max(300px,min(72vh,calc(100vh - 330px),640px));width:auto;max-width:100%;display:block;margin:0 auto;border-radius:7%/4.5%;box-shadow:0 2px 12px rgba(42,29,58,.25);touch-action:none;cursor:grab;background:#fff}
 .tools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .tools button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
 .plist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto}
@@ -209,6 +217,7 @@ canvas#sheet{width:100%;max-width:min(460px,calc((100vh - 220px) * .7071));aspec
 .pitem button.open{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-weight:600;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
+body:has(.modal.on) .toast{bottom:calc(120px + env(safe-area-inset-bottom,0px))}
 .mcard.wide{max-width:780px}
 .cropcard{max-width:1500px;width:100%;height:100%;padding:12px;gap:10px;overflow:hidden}
 .crophead{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
@@ -292,11 +301,22 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
 .edfoot .sp{flex:1}
 .edfoot .btn{min-width:96px}
 .statusrow{display:flex;align-items:center;gap:6px}
+.pc-acts{display:flex;gap:4px}
+.pc-meta .pc-more{padding:4px 9px;font-weight:800}
+.cardmenu{position:fixed;z-index:15;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;display:grid;gap:2px;min-width:180px}
+.cardmenu[hidden]{display:none}
+.cardmenu button{font:inherit;font-weight:600;text-align:left;border:0;background:transparent;color:var(--ink);padding:10px 12px;border-radius:10px;cursor:pointer}
+.cardmenu button:hover,.cardmenu button:focus-visible{background:var(--bg)}
+.cardmenu button:disabled{opacity:.4;cursor:default}
+.cardmenu button.danger{color:var(--bad)}
+.cardmenu button.danger[data-armed]{background:var(--bad);color:#fff}
 .undel{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:var(--accent-soft);border-radius:12px;padding:8px 10px;font-weight:600}
 .pitem .pmore{font-weight:800;min-width:40px}
 .pextra{flex-basis:100%;display:flex;gap:6px;justify-content:flex-end}
 .pextra[hidden]{display:none}
 details.backups{margin:0;padding:10px 14px}
+details.ncgroup{margin:0;padding:10px 14px;background:var(--bg)}
+details.ncgroup .field{margin:0 0 10px}
 @media (max-width:640px){
   .backtwo{grid-template-columns:minmax(0,1fr)}
   /* en el teléfono la tarjeta queda fija arriba mientras se eligen diseños */
@@ -510,7 +530,7 @@ details.backups{margin:0;padding:10px 14px}
       <h2 id="edTitle">Tarjeta</h2>
       <div class="seg" id="edSideSeg"></div>
     </div>
-    <div class="edgrid">
+    <div class="edgrid" id="edGrid">
       <div class="edmain">
         <p class="edhint" id="edHint">Mové la foto con el dedo</p>
         <canvas id="edCanvas" title="Arrastrá la imagen para acomodarla"></canvas>
@@ -518,27 +538,22 @@ details.backups{margin:0;padding:10px 14px}
           <button data-act="zout" title="Achicar la foto (alrededor se ve el fondo)" aria-label="Achicar la foto">−</button>
           <button data-act="zin" title="Agrandar la foto" aria-label="Agrandar la foto">+</button>
           <button data-act="reset" class="txt" title="Centrar y tamaño original">Centrar foto</button>
+          <button data-act="rotate" class="txt" title="Girar 90°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>Girar</button>
         </div>
+        <div class="row" style="margin:0;justify-content:center"><button class="btn small" id="edMoreBtn" aria-expanded="false" aria-controls="edMore">Más herramientas</button></div>
         <div id="edBackChoice" class="seg" style="justify-content:center"></div>
         <p class="edres" id="edRes"></p>
       </div>
-      <div class="edbar" role="toolbar" aria-label="Herramientas">
-        <div class="tools" id="edTools">
-        <button data-act="change" title="Cambiar imagen" aria-label="Cambiar imagen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg></button>
-        <button data-act="rotate" title="Girar 90°" aria-label="Girar 90°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
-        <button data-act="key" title="Quitar un color (fondo de un logo, etc.)" aria-label="Quitar un color (fondo de un logo, etc.)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5M4 20l9.5-9.5M12 6l6 6"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/></svg></button>
+      <div class="edmore" id="edMore" hidden>
+        <div class="tools edtools" id="edTools" role="toolbar" aria-label="Más herramientas">
+          <button data-act="change" title="Elegir otra foto para este lado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>Cambiar foto</button>
+          <button data-act="key" title="Quitar un color (el fondo de un logo, por ejemplo)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5M4 20l9.5-9.5M12 6l6 6"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/></svg>Quitar un color</button>
         </div>
-        <div class="tools" id="edCardTools">
-        <button data-act="left" title="Mover antes" aria-label="Mover antes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="5" width="9" height="14" rx="1.5"/><path d="M9 12H3M6 9l-3 3 3 3"/></svg></button>
-        <button data-act="right" title="Mover después" aria-label="Mover después"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="9" height="14" rx="1.5"/><path d="M15 12h6M18 9l3 3-3 3"/></svg></button>
-        <button data-act="dup" title="Duplicar tarjeta" aria-label="Duplicar tarjeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/></svg></button>
-        <button data-act="del" title="Eliminar tarjeta (tocá dos veces)" aria-label="Eliminar tarjeta (tocá dos veces)" id="edDel" class="danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
-        </div>
+        <aside class="edside" id="adjDet" aria-label="Luz y color">
+          <h3>Luz y color</h3>
+          <div id="adjBox"></div>
+        </aside>
       </div>
-      <aside class="edside" id="adjDet" aria-label="Luz y color">
-        <h3>Luz y color</h3>
-        <div id="adjBox"></div>
-      </aside>
     </div>
     <div class="edfoot">
       <button class="btn" id="edUndo" title="Volver un paso atrás, sin cancelar lo demás">↶ Deshacer</button>
@@ -627,11 +642,14 @@ details.backups{margin:0;padding:10px 14px}
 <div class="modal" id="ncModal" role="dialog" aria-label="Nueva colección">
   <div class="mcard">
     <h2 id="ncTitle">Nueva colección</h2>
-    <div class="field" style="margin:0"><label for="ncGroup">Grupo</label>
-      <div class="row" style="margin:0"><select class="sel" id="ncGroup"></select><button class="btn small" id="ncManage">Administrar grupos</button></div></div>
-    <div class="field" style="margin:0"><label for="ncAlbum">Álbum o set</label><select class="sel" id="ncAlbum"></select></div>
-    <div class="field" style="margin:0"><label for="ncName">Nombre de la colección</label><input type="text" id="ncName" maxlength="60" class="textin" style="font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></div>
-    <label class="check" style="margin:0"><input type="checkbox" id="ncApply" checked> Poner en el dorso los nombres y logos del grupo y del álbum</label>
+    <div class="field" style="margin:0" id="ncNameField"><label for="ncName">¿Cómo se llama tu colección?</label><input type="text" id="ncName" maxlength="60" class="textin" style="font:inherit;font-size:1.05rem;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></div>
+    <details class="adult ncgroup" id="ncMore">
+      <summary>Grupo y álbum (opcional)</summary>
+      <div class="field"><label for="ncGroup">Grupo</label>
+        <div class="row" style="margin:0"><select class="sel" id="ncGroup"></select><button class="btn small" id="ncManage">Administrar grupos</button></div></div>
+      <div class="field"><label for="ncAlbum">Álbum o set</label><select class="sel" id="ncAlbum"></select></div>
+      <label class="check" style="margin:0"><input type="checkbox" id="ncApply" checked> Poner en la parte de atrás los nombres y logos del grupo y del álbum</label>
+    </details>
     <div class="row" style="margin:0;justify-content:flex-end"><button class="btn" id="ncCancel">Cancelar</button><button class="btn primary" id="ncOk">Crear colección</button></div>
   </div>
 </div>
@@ -670,6 +688,12 @@ details.backups{margin:0;padding:10px 14px}
   </div>
 </div>
 
+<div class="cardmenu" id="cardMenu" role="menu" aria-label="Acciones de la tarjeta" hidden>
+  <button role="menuitem" data-c="dup">Duplicar</button>
+  <button role="menuitem" data-c="left">Mover antes</button>
+  <button role="menuitem" data-c="right">Mover después</button>
+  <button role="menuitem" data-c="del" class="danger">Eliminar</button>
+</div>
 <div class="toast" id="toast" role="status"></div>
 <input type="file" id="fileMulti" accept="image/*" multiple hidden>
 <input type="file" id="fileFolder" accept="image/*" multiple webkitdirectory hidden>
@@ -1166,7 +1190,7 @@ function renderGrid(){
     let el = grid.children[i];
     if (!el){
       el = document.createElement("div"); el.className = "pc";
-      el.innerHTML = '<button class="pc-del" aria-label="Borrar tarjeta">×</button><span class="pc-check" aria-hidden="true">✓</span><button class="pc-flip" aria-label="Dar vuelta"><div class="pc-inner"><canvas class="f"></canvas><canvas class="b"></canvas></div></button><div class="pc-meta"><span></span><button>Editar</button></div>';
+      el.innerHTML = '<button class="pc-del" aria-label="Borrar tarjeta">×</button><span class="pc-check" aria-hidden="true">✓</span><button class="pc-flip" aria-label="Dar vuelta"><div class="pc-inner"><canvas class="f"></canvas><canvas class="b"></canvas></div></button><div class="pc-meta"><span></span><span class="pc-acts"><button class="pc-edit">Editar</button><button class="pc-more" aria-label="Más acciones de esta tarjeta" aria-haspopup="menu" title="Duplicar, mover o eliminar">⋯</button></span></div>';
       el.querySelector(".pc-flip").onclick = () => {
         if (Date.now() - lastDragEnd < 350) return;
         if (state.selecting){
@@ -1185,7 +1209,8 @@ function renderGrid(){
         clearTimeout(del._t); del.classList.remove("armed"); del.textContent = "×";
         deleteCards(new Set([state.cards[+el.dataset.i].id]));
       };
-      el.querySelector(".pc-meta button").onclick = () => openEditor(+el.dataset.i, el.classList.contains("flipped") ? "back" : "front");
+      el.querySelector(".pc-edit").onclick = () => openEditor(+el.dataset.i, el.classList.contains("flipped") ? "back" : "front");
+      el.querySelector(".pc-more").onclick = e => openCardMenu(+el.dataset.i, e.currentTarget);
       grid.appendChild(el);
     }
     el.dataset.i = i;
@@ -1195,12 +1220,43 @@ function renderGrid(){
     el.querySelector(".pc-inner").style.aspectRatio = `${sz.w}/${sz.h}`;
     const low = card.front && dpiOf(card.front) < LOW_DPI, meta = el.querySelector(".pc-meta span");
     meta.textContent = `#${i+1}${card.back ? " · dorso propio" : ""}`;
-    if (low){ const w = document.createElement("span"); w.className = "lowres"; w.textContent = " · ⚠ baja resolución"; w.title = `Sale impresa a ${Math.round(dpiOf(card.front))} ppp: se puede ver pixelada`; meta.appendChild(w); }
+    if (low){ const w = document.createElement("span"); w.className = "lowres"; w.textContent = " · ⚠ puede verse borrosa"; w.title = `Sale impresa a ${Math.round(dpiOf(card.front))} ppp: se puede ver pixelada`; meta.appendChild(w); }
     const w = el.clientWidth || 140;
     faceCanvas(el.querySelector("canvas.f"), card, "front", i, w);
     faceCanvas(el.querySelector("canvas.b"), card, "back", i, w);
   });
 }
+/* acciones de la tarjeta (fuera del editor, así «Cancelar» del editor solo toca la imagen) */
+let menuIdx = -1, menuFrom = null;
+function openCardMenu(i, btn){
+  const m = $("cardMenu"); menuIdx = i; menuFrom = btn;
+  m.querySelector('[data-c="left"]').disabled = i === 0;
+  m.querySelector('[data-c="right"]').disabled = i >= state.cards.length - 1;
+  const del = m.querySelector('[data-c="del"]'); delete del.dataset.armed; del.textContent = "Eliminar";
+  m.hidden = false;
+  const r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + "px";
+  m.style.top = (r.bottom + h + 8 > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+  btn.setAttribute("aria-expanded", "true");
+  m.querySelector("button:not(:disabled)").focus();
+}
+function closeCardMenu(back){
+  const m = $("cardMenu"); if (m.hidden) return;
+  m.hidden = true; if (menuFrom){ menuFrom.setAttribute("aria-expanded", "false"); if (back) menuFrom.focus(); }
+  menuIdx = -1; menuFrom = null;
+}
+$("cardMenu").addEventListener("click", e => {
+  const b = e.target.closest("[data-c]"); if (!b || menuIdx < 0) return;
+  const i = menuIdx, cards = state.cards, c = b.dataset.c;
+  if (c === "del" && !b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "¿Seguro? Tocá de nuevo"; return; }
+  closeCardMenu(false);
+  if (c === "dup"){ const copy = r => r ? {...r} : null; cards.splice(i+1, 0, {id:newId("c"), front:copy(cards[i].front), back:copy(cards[i].back)}); renderGrid(); toast("Tarjeta duplicada."); }
+  if (c === "left" && i > 0){ [cards[i-1], cards[i]] = [cards[i], cards[i-1]]; renderGrid(); toast(`Tarjeta movida al lugar #${i}.`); }
+  if (c === "right" && i < cards.length-1){ [cards[i+1], cards[i]] = [cards[i], cards[i+1]]; renderGrid(); toast(`Tarjeta movida al lugar #${i+2}.`); }
+  if (c === "del") deleteCards(new Set([cards[i].id]));
+});
+document.addEventListener("pointerdown", e => { if (!$("cardMenu").hidden && !e.target.closest("#cardMenu") && !e.target.closest(".pc-more")) closeCardMenu(false); });
+window.addEventListener("scroll", () => closeCardMenu(false), {passive:true});
 $("flipAllBtn").onclick = () => { state.allFlipped = !state.allFlipped; renderGrid(); };
 function updateSelBar(){
   $("selBar").hidden = !state.selecting;
@@ -1476,7 +1532,7 @@ function renderPrintTab(){
     ? `${state.cards.length} tarjetas en ${n} ${n === 1 ? "hoja" : "hojas"}. El PDF tiene ${pages} ${pages === 1 ? "página" : "páginas"}${state.withBacks ? ", alternando frente y dorso" : ""}.`
     : "Agregá fotos en «Mis fotos» para ver la hoja.";
   const low = state.cards.filter(c => c.front && dpiOf(c.front) < LOW_DPI).length;
-  if (low){ const w = document.createElement("span"); w.className = "lowres"; w.textContent = ` ⚠ ${low} ${low === 1 ? "tarjeta tiene" : "tarjetas tienen"} poca resolución y se ${low === 1 ? "puede" : "pueden"} ver pixelada${low === 1 ? "" : "s"} (marcadas con !).`; $("pdfInfo").appendChild(w); }
+  if (low){ const w = document.createElement("span"); w.className = "lowres"; w.textContent = ` ⚠ ${low} ${low === 1 ? "tarjeta puede verse borrosa" : "tarjetas pueden verse borrosas"} al imprimir (están marcadas con !). Se imprime igual.`; $("pdfInfo").appendChild(w); }
   const cv = $("sheet"), dpr = devicePixelRatio || 1, W = Math.round((cv.clientWidth || 360)*dpr), H = Math.round(W*paper().h/paper().w);
   cv.style.aspectRatio = `${paper().w}/${paper().h}`;
   if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
@@ -1543,6 +1599,7 @@ function edCancel(){
   if (changed) toast("Cancelado: la tarjeta quedó como estaba.");
 }
 $("edUndo").onclick = edUndo;
+$("edMoreBtn").onclick = () => { const on = $("edMoreBtn").getAttribute("aria-expanded") !== "true"; $("edMoreBtn").setAttribute("aria-expanded", on); $("edMoreBtn").textContent = on ? "Menos herramientas" : "Más herramientas"; renderEditor(); };
 $("edCancel").onclick = edCancel;
 // cómo estaba la tarjeta (o el dorso común) al abrir el editor, para poder volver atrás
 function edSnap(idx){
@@ -1568,12 +1625,13 @@ function renderEditor(){
       v => { if (v === "common"){ card.back = null; renderEditor(); } else pickOne(ref => { card.back = ref; renderEditor(); }); });
   } else choice.style.display = "none";
   const ref = edRef();
-  $("edTools").style.display = ref ? "" : "none";
-  $("edCardTools").style.display = common ? "none" : "";
+  $("edMoreBtn").parentElement.style.display = ref ? "" : "none";
+  $("edMore").hidden = !ref || $("edMoreBtn").getAttribute("aria-expanded") !== "true";
+  $("edGrid").classList.toggle("more", !$("edMore").hidden);
   edTrack(); edButtons();
   $("edZoom").style.display = ref ? "" : "none";
   $("edHint").hidden = !ref;
-  $("edHint").textContent = matchMedia("(pointer: coarse)").matches ? "Mové la foto con el dedo. Con dos dedos la agrandás o achicás." : "Arrastrá la foto para moverla. Con la rueda del mouse la agrandás o achicás.";
+  $("edHint").textContent = matchMedia("(pointer: coarse)").matches ? "Mové la foto con el dedo. Con dos dedos, o con + y −, la agrandás o achicás." : "Arrastrá la foto para moverla. Con + y −, o con la rueda del mouse, la agrandás o achicás.";
   const cv = $("edCanvas"), sz = size(), dpr = devicePixelRatio || 1;
   cv.style.aspectRatio = `${sz.w}/${sz.h}`;
   const W = Math.round((cv.clientWidth || 250)*dpr), H = Math.round(W*sz.h/sz.w);
@@ -1583,7 +1641,8 @@ function renderEditor(){
   if (common) drawRef(ctx, state.commonBack, R); else drawFace(ctx, card, ed.side, R, R, ed.idx);
   $("adjDet").hidden = !ref; adjUI.sync();
   const d = ref ? dpiOf(ref) : Infinity;
-  $("edRes").textContent = isFinite(d) ? `${Math.round(d)} ppp al imprimir${d < LOW_DPI ? " · ⚠ baja: se puede ver pixelada" : ""}` : "";
+  $("edRes").textContent = d < LOW_DPI ? "⚠ Puede verse borrosa al imprimir. Probá achicarla o usar una foto más grande." : "";
+  $("edRes").title = isFinite(d) ? `${Math.round(d)} ppp al imprimir (conviene 150 o más)` : "";
   $("edRes").classList.toggle("lowres", d < LOW_DPI);
   const miss = [ref, common ? null : card.front, common ? null : card.back].filter(Boolean).map(r => r.photoId).filter(needsFull);
   if (miss.length) ensureFull(miss).then(() => { if (ed) renderEditor(); });
@@ -1611,19 +1670,6 @@ document.querySelectorAll("#editor .tools").forEach(t => t.addEventListener("cli
   if (act === "zin" && ref) ref.zoom = Math.min(4, (ref.zoom||1)*1.15);
   if (act === "zout" && ref) ref.zoom = Math.max(0.3, (ref.zoom||1)/1.15);
   if (act === "reset" && ref){ ref.zoom = 1; ref.fx = .5; ref.fy = .5; }
-  if (act === "left" && i > 0){ [cards[i-1], cards[i]] = [cards[i], cards[i-1]]; ed.idx--; }
-  if (act === "right" && i >= 0 && i < cards.length-1){ [cards[i+1], cards[i]] = [cards[i], cards[i+1]]; ed.idx++; }
-  if (act === "dup" && i >= 0){
-    const c = cards[i], copy = r => r ? {...r} : null;
-    cards.splice(i+1, 0, {id:newId("c"), front:copy(c.front), back:copy(c.back)});
-    toast("Tarjeta duplicada.");
-  }
-  if (act === "del" && i >= 0){
-    const btn = $("edDel");
-    if (!btn.dataset.armed){ btn.dataset.armed = "1"; btn.classList.add("armed"); toast("Tocá de nuevo el tacho para eliminar la tarjeta."); setTimeout(() => { delete btn.dataset.armed; btn.classList.remove("armed"); }, 3000); return; }
-    delete btn.dataset.armed; btn.classList.remove("armed");
-    cards.splice(i, 1); closeEditor(); return;
-  }
   renderEditor();
 }));
 /* brillo, contraste y sombras de la imagen que se está editando */
@@ -1678,6 +1724,36 @@ edCv.addEventListener("wheel", e => {
 }, {passive:false});
 // Safari del iPhone: que el pellizco sobre la tarjeta no agrande la página entera
 ["gesturestart", "gesturechange"].forEach(t => document.addEventListener(t, e => { if (e.target && e.target.closest && e.target.closest("#edCanvas")) e.preventDefault(); }, {passive:false}));
+
+/* ---------- teclado en los cuadros de diálogo ----------
+   Al abrir uno, el foco entra; Tab no sale de él; Escape lo cierra; al cerrar, el foco vuelve a donde estaba. */
+const MODAL_CLOSE = {projModal:"projClose", groupsModal:"groupsClose", ncModal:"ncCancel", keyModal:"keyClose", editor:"edCancel"};
+const modalStack = [];
+const focusables = el => [...el.querySelectorAll('button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && x.getClientRects().length && (!x.checkVisibility || x.checkVisibility()));
+document.querySelectorAll(".modal").forEach(m => {
+  new MutationObserver(() => {
+    const on = m.classList.contains("on"), at = modalStack.findIndex(x => x.m === m);
+    if (on && at < 0){
+      modalStack.push({m, from: document.activeElement});
+      setTimeout(() => { if (!m.classList.contains("on") || m.contains(document.activeElement)) return; const f = m.id === "ncModal" ? $("ncName") : focusables(m)[0]; if (f){ f.focus(); if (f === $("ncName")) f.select(); } else { m.querySelector(".mcard")?.setAttribute("tabindex", "-1"); m.querySelector(".mcard")?.focus(); } }, 30);
+    } else if (!on && at >= 0){
+      const [{from}] = modalStack.splice(at, 1);
+      if (from && from.isConnected && from.focus && !modalStack.length) setTimeout(() => from.focus(), 0);
+    }
+  }).observe(m, {attributes:true, attributeFilter:["class"]});
+});
+document.addEventListener("keydown", e => {
+  if (!$("cardMenu").hidden && e.key === "Escape"){ e.preventDefault(); closeCardMenu(true); return; }
+  const top = modalStack[modalStack.length - 1]; if (!top) return;
+  const m = top.m;
+  if (e.key === "Escape" && MODAL_CLOSE[m.id]){ e.preventDefault(); $(MODAL_CLOSE[m.id]).click(); return; }
+  if (e.key === "Tab"){
+    const f = focusables(m); if (!f.length){ e.preventDefault(); return; }
+    const i = f.indexOf(document.activeElement);
+    if (e.shiftKey && (i <= 0)){ e.preventDefault(); f[f.length-1].focus(); }
+    else if (!e.shiftKey && (i === -1 || i === f.length-1)){ e.preventDefault(); f[0].focus(); }
+  }
+});
 
 /* ---------- recortar zonas de un collage ---------- */
 const crop = {img:null, url:null, rects:[], sel:-1, lock:true, role:"front", same:true, sameSize:true, undo:[],
@@ -2640,7 +2716,8 @@ async function openNC(mode){
   ncMode = mode;
   if (mode === "new") await saveProject();
   $("ncTitle").textContent = mode === "new" ? "Nueva colección" : "Grupo y álbum de esta colección";
-  $("ncOk").textContent = mode === "new" ? "Crear colección" : "Guardar";
+  $("ncOk").textContent = mode === "new" ? "Crear" : "Guardar";
+  $("ncMore").open = mode !== "new";
   const n = $("ncName"); delete n.dataset.touched;
   if (mode === "new"){
     let k = 1; try { k = (await listProjects()).length + 1; } catch(_){}
