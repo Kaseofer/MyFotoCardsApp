@@ -57,9 +57,9 @@
       if (!item.thumbId) return;
       const d = await openDb(item.mode);
       const rec = await reqP(d.transaction("photos").objectStore("photos").get(item.thumbId));
-      const blob = rec && (rec.thumb || rec.blob);
+      const blob = rec && (rec.thumb || blobOf(rec));
       if (!blob) return;
-      const bmp = await createImageBitmap(blob), dpr = devicePixelRatio || 1;
+      const bmp = await decode(blob), dpr = devicePixelRatio || 1;
       cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
       const x = cv.getContext("2d"), sc = Math.max(cv.width/bmp.width, cv.height/bmp.height);
       x.drawImage(bmp, (cv.width - bmp.width*sc)/2, (cv.height - bmp.height*sc)/2, bmp.width*sc, bmp.height*sc);
@@ -129,7 +129,39 @@
     for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     return new Blob([arr], {type:mime});
   }
+  /* Safari (iPhone/iPad) a veces pierde o no puede leer los Blob guardados en IndexedDB: ahí las fotos
+     de Photocards se guardan como bytes (_bytes + _type) y se vuelven a armar como Blob al leerlas */
+  const INLINE = (() => { const ua = navigator.userAgent || "";
+    return /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || (/Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua)); })();
+  async function packRec(r){
+    if (!INLINE || !r || !(r.blob instanceof Blob)) return r;
+    const {blob, ...x} = r;
+    return {...x, _bytes: await blob.arrayBuffer(), _type: blob.type || ""};
+  }
+  function unpackRec(r){
+    if (!r || r.blob || !r._bytes) return r;
+    const {_bytes, _type, ...x} = r;
+    return {...x, blob: new Blob([_bytes], {type:_type || ""})};
+  }
+  const blobOf = r => (r && (r.blob || unpackRec(r).blob)) || null;
+  // Abre una imagen aunque createImageBitmap falle (pasa en algunos Safari): prueba con <img>
+  async function decode(blob){
+    try { return await createImageBitmap(blob); } catch(_){}
+    const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("img")); i.src = src; });
+    let img = null;
+    const url = URL.createObjectURL(blob);
+    try { img = await load(url); } catch(_){} finally { URL.revokeObjectURL(url); }
+    if (!img){
+      let b = blob;
+      try { b = new Blob([await blob.arrayBuffer()], {type:blob.type || "image/jpeg"}); } catch(_){}
+      img = await load(await blobToDataURL(b));
+    }
+    const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext("2d").drawImage(img, 0, 0);
+    return c;
+  }
   async function packBlobs(rec){
+    rec = unpackRec(rec);
     const out = {};
     for (const [k, v] of Object.entries(rec)) out[k] = v instanceof Blob ? {__blob: await blobToDataURL(v)} : v;
     return out;
@@ -166,8 +198,10 @@
       const j = JSON.parse(line);
       if (first){ first = false; if (j.format !== "myfotocards-todo") throw new Error("formato"); return; }
       if (!STORES[j.m] || !STORES[j.m].includes(j.s)) return;
+      let rec = unpackBlobs(j.r);
+      if (j.m === "cards") rec = await packRec(rec);
       const d = await openDb(j.m), t = d.transaction(j.s, "readwrite");
-      t.objectStore(j.s).put(unpackBlobs(j.r)); await doneP(t);
+      t.objectStore(j.s).put(rec); await doneP(t);
       if (j.s === "projects") projects++;
       if (onProgress && ++n % 20 === 0) onProgress(n);
     };
@@ -321,5 +355,6 @@
   }
 
   window.MFC = {hasAdj, adjusted, adjustPanel, MODES, openDb, reqP, doneP, remember, recall, listProjects, thumb, openIn, listGroups, groupLabel,
-    handoff, takeShared, exportAll, importAll, saveBlobLocal, safeName, initModeNav, renderOtherProjects, blobToDataURL, dataURLToBlob};
+    handoff, takeShared, exportAll, importAll, saveBlobLocal, safeName, initModeNav, renderOtherProjects, blobToDataURL, dataURLToBlob,
+    packRec, unpackRec, blobOf, decode, INLINE};
 })();

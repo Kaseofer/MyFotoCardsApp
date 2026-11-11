@@ -112,7 +112,8 @@
   const count = (mode, r) => mode === "cards" ? (r.cards || []).length : (r.slots || []).filter(Boolean).length;
   async function localPhotos(mode, id){
     const d = await openDb(mode);
-    return await reqP(d.transaction("photos").objectStore("photos").index("project").getAll(id));
+    const list = await reqP(d.transaction("photos").objectStore("photos").index("project").getAll(id));
+    return mode === "cards" ? list.map(MFC.unpackRec) : list;
   }
   async function push(mode, rec, meta, exists = false){
     const list = (await localPhotos(mode, rec.id)).filter(p => p.blob);
@@ -148,14 +149,14 @@
     const need = [];
     for (const f of fotos){
       const ex = have.get(f.id);
-      if (ex && ex.blob && await hashOf(ex.id, ex.blob) === f.hash) continue;
+      if (ex && ex.blob){ try { if (await hashOf(ex.id, ex.blob) === f.hash) continue; } catch(_){} }
       need.push(f);
     }
     prog = {label:"Bajando", done:0, total:need.length};
     await pool(need, 4, async f => {
       const blob = await download(f.ruta);
       hashStore()[`${f.id}|${blob.size}|${blob.type}`] = f.hash;
-      toPut.push({id:f.id, projectId:id, blob}); tick();
+      toPut.push(mode === "cards" ? await MFC.packRec({id:f.id, projectId:id, blob}) : {id:f.id, projectId:id, blob}); tick();
     });
     prog = null;
     const updated = Date.now(); // reloj de este dispositivo: así un cambio posterior siempre queda "más nuevo"
@@ -180,9 +181,10 @@
     const swap = v => Array.isArray(v) ? v.map(swap) : v && typeof v === "object"
       ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === "photoId" && map.has(x) ? map.get(x) : swap(x)])) : v;
     const pid = newId("p"), copy = {...swap(rec), id:pid, name:`${rec.name || "Sin nombre"} (copia de este dispositivo)`, updated:Date.now()};
+    const copies = await Promise.all(list.map(p => { const c = {...p, id:map.get(p.id), projectId:pid}; return mode === "cards" ? MFC.packRec(c) : c; }));
     const d = await openDb(mode), t = d.transaction(["projects", "photos"], "readwrite");
     t.objectStore("projects").put(copy);
-    list.forEach(p => t.objectStore("photos").put({...p, id:map.get(p.id), projectId:pid}));
+    copies.forEach(p => t.objectStore("photos").put(p));
     await doneP(t);
     await push(mode, copy, meta, false);
     return copy.name;
@@ -230,8 +232,8 @@
   /* ---------- grupos y álbumes (con sus logos) ---------- */
   async function libHash(id){
     if (!id) return null;
-    const d = await openDb("cards"), r = await reqP(d.transaction("libphotos").objectStore("libphotos").get(id));
-    return r && r.blob ? await hashOf(id, r.blob) : null;
+    const d = await openDb("cards"), b = MFC.blobOf(await reqP(d.transaction("libphotos").objectStore("libphotos").get(id)));
+    return b ? await hashOf(id, b) : null;
   }
   // la foto y el tipo del artista viajan como una entrada especial dentro de «albumes» (así no hace falta otra columna)
   const ART = "_artista";
@@ -244,8 +246,8 @@
   async function pushGroup(g, meta){
     const up = async id => {
       if (!id) return null;
-      const d = await openDb("cards"), r = await reqP(d.transaction("libphotos").objectStore("libphotos").get(id));
-      return r && r.blob ? await upload(id, r.blob) : null;
+      const d = await openDb("cards"), b = MFC.blobOf(await reqP(d.transaction("libphotos").objectStore("libphotos").get(id)));
+      return b ? await upload(id, b) : null;
     };
     const albumes = await Promise.all((g.albums || []).map(async a => ({id:a.id, nombre:a.name || "Sin nombre", logo_hash:await up(a.logoId)})));
     const foto = await up(g.photoId);
@@ -259,9 +261,9 @@
       if (!h) return null;
       if (byHash.has(h)) return byHash.get(h);
       const ruta = known.get(h); if (!ruta) return null;
-      const blob = await download(ruta), id = newId("l");
+      const blob = await download(ruta), id = newId("l"), rec = await MFC.packRec({id, blob});
       const d = await openDb("cards"), t = d.transaction("libphotos", "readwrite");
-      t.objectStore("libphotos").put({id, blob}); await doneP(t);
+      t.objectStore("libphotos").put(rec); await doneP(t);
       hashStore()[`${id}|${blob.size}|${blob.type}`] = h; byHash.set(h, id);
       return id;
     };
@@ -282,7 +284,7 @@
       if (byHash) return byHash;
       byHash = new Map();
       const all = await reqP((await openDb("cards")).transaction("libphotos").objectStore("libphotos").getAll());
-      for (const p of all) if (p.blob) byHash.set(await hashOf(p.id, p.blob), p.id);
+      for (const p of all){ const b = MFC.blobOf(p); if (b) try { byHash.set(await hashOf(p.id, b), p.id); } catch(_){} }
       return byHash;
     };
     for (const g of locals){
@@ -302,6 +304,27 @@
       if (meta.g[r.id] && meta.g[r.id].t === r.actualizado){ must(await sb.from("grupos").delete().eq("id", r.id)); delete meta.g[r.id]; }
       else { await pullGroup(r, meta, await libIndex()); out.groups = true; }
     }
+  }
+
+  // Vuelve a bajar fotos que en este dispositivo faltan o no se pueden leer (sin tocar el resto de la colección)
+  async function repair(mode, id, ids){
+    if (!user || !sb || !navigator.onLine) return false;
+    try { if (running) await running; } catch(_){}
+    try {
+      const row = must(await sb.from("proyectos").select("datos").eq("id", id).maybeSingle());
+      const fotos = ((row && row.datos && row.datos.fotos) || []).filter(f => !ids || ids.includes(f.id));
+      if (!fotos.length) return false;
+      const recs = [];
+      await pool(fotos, 4, async f => {
+        const blob = await download(f.ruta);
+        hashStore()[`${f.id}|${blob.size}|${blob.type}`] = f.hash;
+        recs.push(mode === "cards" ? await MFC.packRec({id:f.id, projectId:id, blob}) : {id:f.id, projectId:id, blob});
+      });
+      const d = await openDb(mode), t = d.transaction("photos", "readwrite");
+      recs.forEach(r => t.objectStore("photos").put(r)); await doneP(t);
+      saveHashes();
+      return true;
+    } catch(e){ console.warn("nube: no se pudieron volver a bajar las fotos", e); return false; }
   }
 
   /* ---------- sincronizar ---------- */
@@ -567,5 +590,5 @@
     }
   }
 
-  MFC.cloud = {init, syncNow, open:openModal, get user(){ return user; }, get status(){ return status; }, _lib:lib};
+  MFC.cloud = {init, syncNow, repair, open:openModal, get user(){ return user; }, get status(){ return status; }, _lib:lib};
 })();

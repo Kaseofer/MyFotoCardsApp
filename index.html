@@ -14,8 +14,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<script src="common.js?v=7"></script>
-<script src="sync.js?v=8"></script>
+<script src="common.js?v=8"></script>
+<script src="sync.js?v=9"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -886,7 +886,7 @@ async function ensureFull(ids){
   for (const id of new Set(ids)){
     if (!id || !needsFull(id)) { if (fullCache.has(id)){ const b = fullCache.get(id); fullCache.delete(id); fullCache.set(id, b); } continue; }
     fullLoading.add(id);
-    try { fullCache.set(id, await createImageBitmap(photos.get(id).blob)); } catch(_){ fullFailed.add(id); }
+    try { fullCache.set(id, await MFC.decode(photos.get(id).blob)); } catch(_){ fullFailed.add(id); }
     fullLoading.delete(id);
     while (fullCache.size > FULL_CAP){ const [k, b] = fullCache.entries().next().value; fullCache.delete(k); b.close && b.close(); }
   }
@@ -2468,9 +2468,10 @@ async function doSave(force){
   clearTimeout(autoTimer); autoTimer = 0;
   saving = true; setSaveState("saving");
   try {
+    const packed = await Promise.all(pending.map(id => MFC.packRec({id, projectId:p.id, blob:photos.get(id).blob})));
     const d = await db(), t = d.transaction(["projects","photos"], "readwrite"), ps = t.objectStore("photos");
     t.objectStore("projects").put({...rec, updated:Date.now(), cardCount:rec.cards.length});
-    pending.forEach(id => ps.put({id, projectId:p.id, blob:photos.get(id).blob}));
+    packed.forEach(r => ps.put(r));
     const keys = await reqP(ps.index("project").getAllKeys(p.id));
     const gone = keys.filter(k => !used.has(k));
     gone.forEach(k => ps.delete(k));
@@ -2580,7 +2581,7 @@ async function newProject(){
   syncInputs(); renderAll(); updateClassChip(); await saveProject(true);
   MFC.remember(LS_LAST, proj.id);
 }
-async function openProject(id){
+async function openProject(id, retry = false){
   if (proj && proj.id !== id) await saveProject();
   const d = await db(), t = d.transaction(["projects","photos"]);
   const rec = await reqP(t.objectStore("projects").get(id));
@@ -2594,9 +2595,9 @@ async function openProject(id){
   let k = 0;
   for (const p of list){
     try {
-      const bmp = await createImageBitmap(p.blob), kf = keep.has(p.id);
-      addPhoto(p.id, bmp, p.blob, p.blob.type === "image/png", true, kf);
-      if (!kf && photos.get(p.id).src !== bmp) bmp.close();
+      const blob = MFC.blobOf(p), bmp = await MFC.decode(blob), kf = keep.has(p.id);
+      addPhoto(p.id, bmp, blob, blob.type === "image/png", true, kf);
+      if (!kf && photos.get(p.id).src !== bmp) bmp.close && bmp.close();
     } catch(_){}
     if (++k % 10 === 0){ toast(`Abriendo… ${k} de ${list.length}`, 60000); await new Promise(r => setTimeout(r, 0)); }
   }
@@ -2604,7 +2605,15 @@ async function openProject(id){
   Object.assign(state, DEFAULTS, rec.settings || {}, {commonBack:rec.commonBack || null, logo:rec.logo || null, logo2:rec.logo2 || null, cards:rec.cards || [], page:0, allFlipped:false});
   lastSig = JSON.stringify(record()); lastSavedAt = new Date(rec.updated);
   opening = false; clearUndo(); MFC.remember(LS_LAST, proj.id);
-  syncInputs(); renderAll(); showSaveInfo(); updateClassChip(); toast(`Abierta: ${proj.name}`);
+  syncInputs(); renderAll(); showSaveInfo(); updateClassChip();
+  // fotos que faltan o no se pueden leer en este dispositivo: si hay nube se vuelven a bajar; si no, se avisa
+  const lost = [...usedPhotoIds()].filter(id => !photos.has(id)), missing = lost.length;
+  if (!missing){ toast(`Abierta: ${proj.name}`); return; }
+  if (!retry && MFC.cloud && MFC.cloud.user && MFC.cloud.repair){
+    toast("Bajando de nuevo las fotos de la nube…", 60000);
+    if (await MFC.cloud.repair("cards", rec.id, lost) && proj && proj.id === rec.id) return openProject(rec.id, true);
+  }
+  toast(`${missing === 1 ? "Una foto no se pudo abrir" : missing + " fotos no se pudieron abrir"} en este dispositivo. Si las tenés en otro, entrá a la nube desde los dos.`, 9000);
 }
 /* lo último que se eliminó queda en memoria para poder recuperarlo desde Mis tarjetas */
 let deletedProj = null;
@@ -2657,7 +2666,7 @@ async function projThumb(cv, p){
     if (!ref) return;
     const d = await db(), rec = await reqP(d.transaction("photos").objectStore("photos").get(ref.photoId));
     if (!rec) return;
-    const bmp = await createImageBitmap(rec.blob), dpr = devicePixelRatio || 1;
+    const bmp = await MFC.decode(MFC.blobOf(rec)), dpr = devicePixelRatio || 1;
     cv.width = Math.round(40*dpr); cv.height = Math.round(62*dpr);
     const x = cv.getContext("2d"), sc = Math.max(cv.width/bmp.width, cv.height/bmp.height);
     x.drawImage(bmp, (cv.width - bmp.width*sc)/2, (cv.height - bmp.height*sc)/2, bmp.width*sc, bmp.height*sc);
@@ -2674,7 +2683,7 @@ async function duplicateProject(id, newName){
   const fix = r => r && map.has(r.photoId) ? {...r, photoId:map.get(r.photoId)} : null;
   const cmap = new Map(), cards = (rec.cards || []).map(c => { const nid = newId("c"); cmap.set(c.id, nid); return {...c, id:nid, front:fix(c.front), back:fix(c.back)}; });
   const t = d.transaction(["projects","photos"], "readwrite");
-  list.forEach(ph => t.objectStore("photos").put({id:map.get(ph.id), projectId:pid, blob:ph.blob}));
+  list.forEach(ph => t.objectStore("photos").put({...ph, id:map.get(ph.id), projectId:pid}));
   t.objectStore("projects").put({...rec, id:pid, name:newName || `${rec.name} — copia`, created:Date.now(), updated:Date.now(), cards, cover:cmap.get(rec.cover) || null,
     commonBack:fix(rec.commonBack), logo:fix(rec.logo), logo2:fix(rec.logo2)});
   await doneP(t);
@@ -2739,8 +2748,8 @@ const byName = (a, b) => a.name.localeCompare(b.name, "es", {sensitivity:"base"}
 async function listGroups(){ const d = await db(); return (await reqP(d.transaction("groups").objectStore("groups").getAll())).sort(byName).map(g => ({...g, albums:(g.albums || []).sort(byName)})); }
 async function getGroup(id){ const d = await db(); return await reqP(d.transaction("groups").objectStore("groups").get(id)); }
 async function putGroup(g){ const d = await db(), t = d.transaction("groups", "readwrite"); t.objectStore("groups").put(g); await doneP(t); }
-async function putLib(blob){ const id = newId("l"), d = await db(), t = d.transaction("libphotos", "readwrite"); t.objectStore("libphotos").put({id, blob}); await doneP(t); return id; }
-async function getLib(id){ if (!id) return null; const d = await db(); const r = await reqP(d.transaction("libphotos").objectStore("libphotos").get(id)); return r ? r.blob : null; }
+async function putLib(blob){ const id = newId("l"), r = await MFC.packRec({id, blob}), d = await db(), t = d.transaction("libphotos", "readwrite"); t.objectStore("libphotos").put(r); await doneP(t); return id; }
+async function getLib(id){ if (!id) return null; const d = await db(); const r = await reqP(d.transaction("libphotos").objectStore("libphotos").get(id)); return MFC.blobOf(r); }
 async function delLib(ids){ ids = ids.filter(Boolean); if (!ids.length) return; const d = await db(), t = d.transaction("libphotos", "readwrite"); ids.forEach(id => t.objectStore("libphotos").delete(id)); await doneP(t); }
 async function fileToPng(file){
   const url = URL.createObjectURL(file);
@@ -2998,8 +3007,9 @@ $("fileBackup").onchange = async e => {
     for (const ph of j.photos || []){ const nid = newId("f"); map.set(ph.id, nid); prepared.push({id:nid, projectId:pid, blob:dataURLToBlob(ph.data)}); }
     const fix = r => r && map.has(r.photoId) ? {...r, photoId:map.get(r.photoId)} : null;
     const cards = (j.project.cards || []).map(c => ({...c, front:fix(c.front), back:fix(c.back)}));
+    const packed = await Promise.all(prepared.map(MFC.packRec));
     const d = await db(), t = d.transaction(["projects","photos"], "readwrite");
-    prepared.forEach(p => t.objectStore("photos").put(p));
+    packed.forEach(p => t.objectStore("photos").put(p));
     t.objectStore("projects").put({...j.project, id:pid, cards, commonBack:fix(j.project.commonBack), logo:fix(j.project.logo), logo2:fix(j.project.logo2), updated:Date.now(), cardCount:cards.length});
     await doneP(t);
     closeProjects(); await openProject(pid);
@@ -3261,7 +3271,7 @@ async function chooseCover(p){
     b.onclick = async () => { close(); await updateMeta(p.id, {cover:c.id}); await refresh(); toast("Portada cambiada."); };
     try {
       const ph = await reqP((await db()).transaction("photos").objectStore("photos").get(c.front.photoId)); if (!ph) return;
-      const bmp = await createImageBitmap(ph.blob), W = 160, H = Math.round(W*size().h/size().w);
+      const bmp = await MFC.decode(MFC.blobOf(ph)), W = 160, H = Math.round(W*size().h/size().w);
       cv.width = W; cv.height = H; const x = cv.getContext("2d"), k = Math.max(W/bmp.width, H/bmp.height);
       x.drawImage(bmp, (W - bmp.width*k)/2, (H - bmp.height*k)/2, bmp.width*k, bmp.height*k); bmp.close && bmp.close();
     } catch(_){}
