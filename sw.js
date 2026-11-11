@@ -3,10 +3,10 @@
    - La página se pide primero a la red (así siempre llega la última versión) y,
      si no hay conexión, se usa la copia guardada.
    - Recibe las fotos que se comparten desde la galería (Android) y se las pasa a la página. */
-const VERSION = "v12";
+const VERSION = "v13";
 const APP = `app-${VERSION}`, RUNTIME = "runtime", SHARED = "compartidas";
 const CORE = [
-  "./", "./index.html", "./hojas.html", "./photocards.html", "./common.js?v=7", "./sync.js?v=7", "./manifest.webmanifest",
+  "./", "./index.html", "./hojas.html", "./photocards.html", "./common.js?v=7", "./sync.js?v=8", "./manifest.webmanifest",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png",
 ];
 const JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";

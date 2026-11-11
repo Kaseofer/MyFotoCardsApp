@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&family=Figtree:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 <script src="common.js?v=7"></script>
-<script src="sync.js?v=7"></script>
+<script src="sync.js?v=8"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
@@ -303,6 +303,53 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
 .edfoot .sp{flex:1}
 .edfoot .btn{min-width:96px}
 .statusrow{display:flex;align-items:center;gap:6px}
+/* pantallas: Mis artistas → un artista → la colección */
+.appbar{max-width:1040px;margin:0 auto;padding:18px 16px 0}
+.appbar .topbar{min-height:44px}
+.view{padding-top:12px}
+body:not([data-view="work"]) .dock{display:none}
+body:not([data-view="work"]) .wrap{padding-bottom:40px}
+.backbtn{font:inherit;font-weight:700;font-size:1rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 16px;cursor:pointer;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.viewtitle{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:1.5rem;margin:0 0 12px}
+#searchRow{margin-bottom:14px}
+.artistgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,40vw),1fr));gap:12px}
+.artcard{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;text-align:center;min-width:0}
+.artcard b{font-size:1.1rem;max-width:100%;overflow-wrap:anywhere;line-height:1.2}
+.artcard small{color:var(--muted)}
+.artcard.add{border-style:dashed;justify-content:center;font-weight:700;color:var(--accent)}
+.artcard.add .plus{font-size:2.4rem;line-height:1}
+.avatar{width:44px;height:44px;border-radius:50%;flex-shrink:0;display:inline-grid;place-items:center;font-weight:800;color:#fff;overflow:hidden;background:var(--violet);font-size:1.2rem}
+.avatar canvas{width:100%;height:100%;display:block}
+.artcard .avatar{width:96px;height:96px;font-size:2.4rem}
+.avatar.big{width:72px;height:72px;font-size:1.9rem}
+.arthead{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.artinfo{flex:1;min-width:0}
+.artinfo h2{margin:0;font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:clamp(1.25rem,6vw,1.6rem);line-height:1.15;overflow-wrap:anywhere}
+.pmorebtn{font:inherit;font-weight:800;font-size:1.1rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;min-width:44px;height:40px;cursor:pointer}
+.btn.wide{width:100%;margin-bottom:14px}
+.collist{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
+.colitem{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px}
+.colopen{flex:1;min-width:0;display:flex;align-items:center;gap:12px;font:inherit;color:var(--ink);background:none;border:0;text-align:left;cursor:pointer;padding:0}
+.colopen canvas{width:54px;height:80px;border-radius:7px;background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.2);flex-shrink:0}
+.colopen b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:1.05rem;overflow:hidden;overflow-wrap:anywhere}
+.colopen small{color:var(--muted)}
+.colopen span{min-width:0}
+.colitem .pickbtn{font:inherit;font-weight:600;border:1px solid var(--accent);background:var(--accent-soft);color:var(--ink);border-radius:999px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.sectitle{font-size:1.05rem;margin:22px 0 8px}
+.homefoot{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;padding-top:14px;border-top:1px dashed var(--line)}
+.notice{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:var(--accent-soft);border-radius:12px;padding:8px 10px;font-weight:600;margin-bottom:12px}
+.notice[hidden]{display:none}
+.dupwarn{background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-weight:600}
+.dupwarn[hidden]{display:none}
+.picklist{display:grid;gap:6px;max-height:50vh;overflow-y:auto}
+.picklist button{font:inherit;font-weight:600;display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 10px;cursor:pointer;text-align:left}
+.picklist button.create{border-style:dashed;color:var(--accent)}
+.picklist button[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.covergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;max-height:60vh;overflow-y:auto}
+.covergrid button{border:2px solid var(--line);border-radius:10px;padding:3px;background:var(--surface);cursor:pointer}
+.covergrid button[aria-current="true"]{border-color:var(--accent)}
+.covergrid canvas{width:100%;display:block;border-radius:6px}
+.herot{display:block;font-size:1.25rem;color:var(--ink)}
 .pc-acts{display:flex;gap:4px}
 .pc-meta .pc-more{padding:4px 9px;font-weight:800}
 .cardmenu{position:fixed;z-index:15;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;display:grid;gap:2px;min-width:180px}
@@ -319,6 +366,14 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
 details.backups{margin:0;padding:10px 14px}
 details.ncgroup{margin:0;padding:10px 14px;background:var(--bg)}
 details.ncgroup .field{margin:0 0 10px}
+.textin{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%}
+.textin.bigin{font-size:1.05rem;padding:11px 12px}
+.artistchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.artistchips:empty{display:none}
+.artistchips button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.artistchips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ghead .gnew{margin-left:auto;font:inherit;font-size:.85rem;font-weight:600;border:1px solid var(--accent);background:var(--accent-soft);color:var(--ink);border-radius:999px;padding:4px 10px;cursor:pointer}
+.gempty{margin:0 0 4px;color:var(--muted);font-size:.9rem}
 @media (max-width:640px){
   .backtwo{grid-template-columns:minmax(0,1fr)}
   /* en el teléfono la tarjeta queda fija arriba mientras se eligen diseños */
@@ -354,12 +409,40 @@ details.ncgroup .field{margin:0 0 10px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
-<body>
-<div class="wrap">
+<body data-view="work">
+<div class="appbar"><div class="topbar"><button class="backbtn" id="navBack" hidden></button><h1 id="appTitle">Luli's Photocards</h1><span id="cloudMount"></span></div></div>
+
+<!-- MIS ARTISTAS -->
+<div class="wrap view" id="homeView" hidden>
+  <h2 class="viewtitle">Mis artistas</h2>
+  <div id="searchRow"><input type="search" id="artistSearch" class="textin bigin" placeholder="Buscá por nombre" aria-label="Buscá un artista o grupo por nombre" autocomplete="off"></div>
+  <div class="notice" id="homeNotice" hidden><span></span><button class="btn small primary"></button></div>
+  <div class="artistgrid" id="artistGrid"></div>
+  <div class="hero" id="homeEmpty" hidden>
+    <b class="herot">¿De quién querés hacer photocards?</b>
+    <p>Agregá tu artista o grupo favorito para empezar.</p>
+    <button class="btn primary big" id="homeAddArtist">Agregar artista o grupo</button>
+  </div>
+  <section id="looseSec" hidden><h3 class="sectitle">Colecciones sin artista</h3><div class="collist" id="looseList"></div></section>
+  <div class="homefoot">
+    <button class="btn small" id="projectsBtn">Todas las colecciones y copias de seguridad</button>
+    <a class="btn small" id="hojasLink2" href="hojas.html">Hojas de fotos (herramienta extra)</a>
+  </div>
+</div>
+
+<!-- UN ARTISTA Y SUS COLECCIONES -->
+<div class="wrap view" id="artistView" hidden>
+  <div class="arthead"><span class="avatar big" id="artAvatar" aria-hidden="true"></span><div class="artinfo"><h2 id="artName"></h2><span class="muted" id="artCount"></span></div><button class="pmorebtn" id="artMenuBtn" aria-label="Más acciones del artista" aria-haspopup="menu" title="Cambiar nombre o foto">⋯</button></div>
+  <div class="notice" id="artNotice" hidden><span></span><button class="btn small primary"></button></div>
+  <button class="btn primary big wide" id="artNewCol">＋ Nueva colección</button>
+  <div class="collist" id="colList"></div>
+  <p class="muted" id="colEmpty" hidden>Todavía no hay colecciones. Tocá «＋ Nueva colección» para empezar.</p>
+</div>
+
+<!-- LA COLECCIÓN (espacio de trabajo) -->
+<div class="wrap view" id="workView">
   <header class="top">
-    <div class="topbar"><h1>Luli's Photocards</h1><span id="cloudMount"></span></div>
     <div class="proj">
-      <button class="iconbtn withtext" id="projectsBtn" title="Mis tarjetas: todas tus colecciones" aria-label="Mis tarjetas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/></svg><span>Mis tarjetas</span></button>
       <input id="projName" maxlength="60" aria-label="Nombre de la colección" autocomplete="off">
       <div class="statusrow">
         <button class="iconbtn savestate withtext" id="saveState" data-state="saved" title="Todo guardado" aria-label="Todo guardado"></button>
@@ -390,8 +473,8 @@ details.ncgroup .field{margin:0 0 10px}
         <button class="btn small" id="folderBtn">Abrir una carpeta entera</button>
         <button class="btn small" id="cropBtn">Recortar de un collage</button>
         <button class="btn small" id="selModeBtn">Seleccionar varias</button>
-        <button class="chip" id="classBtn" title="Grupo y álbum de esta colección (opcional)"></button>
-        <button class="btn small" id="groupsBtn">Grupos y álbumes</button>
+        <button class="chip" id="classBtn" title="Grupo o artista de esta colección"></button>
+        <button class="btn small" id="groupsBtn">Grupos y artistas</button>
         <button class="btn small" id="toHojasBtn" title="Arma un proyecto de Hojas de fotos con los frentes de estas tarjetas">Usar en Hojas de fotos</button>
       </div>
       <div class="row extra">
@@ -420,6 +503,7 @@ details.ncgroup .field{margin:0 0 10px}
       <div>
         <h2>Parte de atrás</h2>
         <p class="hint" style="margin-top:0">Todas las tarjetas llevan esta parte de atrás. Elegí un diseño listo y, si querés, tocá «Personalizar».</p>
+        <div class="row" id="artistDecor" hidden><button class="btn small" id="decorName"></button><button class="btn small" id="decorImg"></button></div>
         <div class="field" style="margin-top:12px"><div class="seg" id="backModeSeg" aria-label="Qué lleva la parte de atrás"></div></div>
         <div id="backImageOpts">
           <div class="row">
@@ -521,7 +605,7 @@ details.ncgroup .field{margin:0 0 10px}
   </section>
 </div>
 
-<div class="dock">
+<div class="dock" id="dock">
   <button class="btn" id="dockAdd">Agregar fotos</button>
   <button class="btn primary" id="goPrintBtn" hidden>Preparar para imprimir</button>
   <button class="btn primary" id="pdfBtn">Descargar PDF</button>
@@ -647,13 +731,20 @@ details.ncgroup .field{margin:0 0 10px}
 <div class="modal" id="ncModal" role="dialog" aria-label="Nueva colección">
   <div class="mcard">
     <h2 id="ncTitle">Nueva colección</h2>
-    <div class="field" style="margin:0" id="ncNameField"><label for="ncName">¿Cómo se llama tu colección?</label><input type="text" id="ncName" maxlength="60" class="textin" style="font:inherit;font-size:1.05rem;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></div>
+    <div class="field" style="margin:0" id="ncArtistField"><label for="ncArtist">¿De qué grupo o artista?</label>
+      <input type="text" id="ncArtist" list="ncArtistList" maxlength="40" autocomplete="off" placeholder="Por ejemplo: KAOS, TWICE, Taylor Swift" class="textin bigin">
+      <datalist id="ncArtistList"></datalist>
+      <div class="artistchips" id="ncChips" aria-label="Tus grupos y artistas"></div>
+      <p class="hint" id="ncArtistHint" style="margin:0"></p>
+    </div>
+    <div class="field" style="margin:0" id="ncNameField"><label for="ncName" id="ncNameLabel">¿Cómo se llama esta colección?</label><input type="text" id="ncName" maxlength="60" class="textin bigin">
+      <div class="artistchips" id="ncSuggest" aria-label="Ideas para el nombre"></div></div>
     <details class="adult ncgroup" id="ncMore">
-      <summary>Grupo y álbum (opcional)</summary>
-      <div class="field"><label for="ncGroup">Grupo</label>
-        <div class="row" style="margin:0"><select class="sel" id="ncGroup"></select><button class="btn small" id="ncManage">Administrar grupos</button></div></div>
-      <div class="field"><label for="ncAlbum">Álbum o set</label><select class="sel" id="ncAlbum"></select></div>
-      <label class="check" style="margin:0"><input type="checkbox" id="ncApply" checked> Poner en la parte de atrás los nombres y logos del grupo y del álbum</label>
+      <summary>Detalles (opcional)</summary>
+      <div class="field"><label for="ncAlbumIn">Álbum o evento</label>
+        <input type="text" id="ncAlbumIn" list="ncAlbumList" maxlength="40" autocomplete="off" placeholder="Por ejemplo: Concierto 2026" class="textin"><datalist id="ncAlbumList"></datalist></div>
+      <label class="check" style="margin:0 0 10px"><input type="checkbox" id="ncApply"> Poner el nombre y el logo del grupo en la parte de atrás</label>
+      <button class="btn small" id="ncManage">Logos y álbumes de cada grupo</button>
     </details>
     <div class="row" style="margin:0;justify-content:flex-end"><button class="btn" id="ncCancel">Cancelar</button><button class="btn primary" id="ncOk">Crear colección</button></div>
   </div>
@@ -662,7 +753,7 @@ details.ncgroup .field{margin:0 0 10px}
 <!-- grupos -->
 <div class="modal" id="groupsModal" role="dialog" aria-label="Grupos">
   <div class="mcard wide">
-    <h2>Grupos <button class="btn small" id="groupsClose">Listo</button></h2>
+    <h2>Grupos y artistas <button class="btn small" id="groupsClose">Listo</button></h2>
     <p class="hint" style="margin:0">Guardá cada grupo con su logo y sus álbumes o sets, cada uno con su logo. Después los elegís al crear una colección y se cargan solos en el dorso.</p>
     <div class="row" style="margin:0"><input type="text" id="newGroupName" maxlength="40" placeholder="Nombre del grupo nuevo" style="font:inherit;flex:1;min-width:160px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"><button class="btn primary" id="addGroupBtn">Agregar grupo</button></div>
     <div id="glist" class="plist" style="max-height:60vh"></div>
@@ -699,6 +790,49 @@ details.ncgroup .field{margin:0 0 10px}
   <button role="menuitem" data-c="right">Mover después</button>
   <button role="menuitem" data-c="del" class="danger">Eliminar</button>
 </div>
+
+<!-- agregar o cambiar un artista -->
+<div class="modal" id="artModal" role="dialog" aria-label="Artista o grupo">
+  <div class="mcard">
+    <h2 id="artModalTitle">Agregar artista o grupo</h2>
+    <div class="field" style="margin:0"><label for="artNameIn">Nombre</label><input type="text" id="artNameIn" maxlength="40" class="textin bigin" placeholder="Por ejemplo: KAOS" autocomplete="off"></div>
+    <div class="dupwarn" id="artDup" hidden><span id="artDupText"></span><div class="row" style="margin:8px 0 0"><button class="btn small primary" id="artDupOpen"></button><button class="btn small" id="artDupNew">Crear otro</button></div></div>
+    <div class="field" style="margin:0"><label>Foto (opcional)</label><div class="row" style="margin:0"><span class="avatar" id="artPhotoPrev" aria-hidden="true"></span><button class="btn small" id="artPhotoBtn">Elegir foto</button><button class="btn small" id="artPhotoDel" hidden>Quitar foto</button></div></div>
+    <details class="adult ncgroup" id="artKindBox"><summary>Tipo (opcional)</summary><div class="seg" id="artKindSeg"></div></details>
+    <div class="row" style="margin:0;justify-content:flex-end"><button class="btn" id="artCancel">Cancelar</button><button class="btn primary" id="artOk">Crear</button></div>
+  </div>
+</div>
+<input type="file" id="fileArtist" accept="image/*" hidden>
+
+<!-- elegir artista (para mover una colección) -->
+<div class="modal" id="pickModal" role="dialog" aria-label="Elegir artista">
+  <div class="mcard">
+    <h2 id="pickTitle">Elegir artista</h2>
+    <input type="search" id="pickSearch" class="textin bigin" placeholder="Buscá por nombre" autocomplete="off" aria-label="Buscá un artista por nombre">
+    <div class="picklist" id="pickList"></div>
+    <div class="row" style="margin:0;justify-content:flex-end"><button class="btn" id="pickCancel">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- elegir la portada de una colección -->
+<div class="modal" id="coverModal" role="dialog" aria-label="Elegir portada">
+  <div class="mcard wide">
+    <h2>Elegir portada</h2>
+    <p class="hint" style="margin:0">Tocá la tarjeta que querés ver en la portada.</p>
+    <div class="covergrid" id="coverGrid"></div>
+    <div class="row" style="margin:0;justify-content:flex-end"><button class="btn" id="coverCancel">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- escribir un nombre -->
+<div class="modal" id="nameModal" role="dialog" aria-label="Nombre">
+  <div class="mcard">
+    <h2 id="nameTitle">Cambiar nombre</h2>
+    <input type="text" id="nameIn" maxlength="60" class="textin bigin" autocomplete="off" aria-label="Nombre">
+    <div class="row" style="margin:0;justify-content:flex-end"><button class="btn" id="nameCancel">Cancelar</button><button class="btn primary" id="nameOk">Guardar</button></div>
+  </div>
+</div>
+<div class="cardmenu" id="popMenu" role="menu" hidden></div>
 <div class="toast" id="toast" role="status"></div>
 <input type="file" id="fileMulti" accept="image/*" multiple hidden>
 <input type="file" id="fileFolder" accept="image/*" multiple webkitdirectory hidden>
@@ -1382,7 +1516,7 @@ function seg(el, items, get, set){
 function renderBackTab(){
   seg($("backModeSeg"), [{id:"design", label:"Un diseño"}, {id:"image", label:"Una foto mía"}], () => state.backMode, v => state.backMode = v);
   seg($("fontSeg"), FONTS, () => state.font, v => state.font = v);
-  renderPresets();
+  renderPresets(); renderArtistDecor();
   if (!$("backCustom").hidden) renderPatterns();
   $("backDragHint").hidden = state.backMode !== "design" || !(state.logo || state.logo2 || state.backText || state.backText2);
   ["logo","logo2"].forEach(k => {
@@ -1732,7 +1866,7 @@ edCv.addEventListener("wheel", e => {
 
 /* ---------- teclado en los cuadros de diálogo ----------
    Al abrir uno, el foco entra; Tab no sale de él; Escape lo cierra; al cerrar, el foco vuelve a donde estaba. */
-const MODAL_CLOSE = {projModal:"projClose", groupsModal:"groupsClose", ncModal:"ncCancel", keyModal:"keyClose", editor:"edCancel"};
+const MODAL_CLOSE = {projModal:"projClose", groupsModal:"groupsClose", ncModal:"ncCancel", keyModal:"keyClose", editor:"edCancel", artModal:"artCancel", pickModal:"pickCancel", coverModal:"coverCancel", nameModal:"nameCancel"};
 const modalStack = [];
 const focusables = el => [...el.querySelectorAll('button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && x.getClientRects().length && (!x.checkVisibility || x.checkVisibility()));
 document.querySelectorAll(".modal").forEach(m => {
@@ -1740,7 +1874,7 @@ document.querySelectorAll(".modal").forEach(m => {
     const on = m.classList.contains("on"), at = modalStack.findIndex(x => x.m === m);
     if (on && at < 0){
       modalStack.push({m, from: document.activeElement});
-      setTimeout(() => { if (!m.classList.contains("on") || m.contains(document.activeElement)) return; const f = m.id === "ncModal" ? $("ncName") : focusables(m)[0]; if (f){ f.focus(); if (f === $("ncName")) f.select(); } else { m.querySelector(".mcard")?.setAttribute("tabindex", "-1"); m.querySelector(".mcard")?.focus(); } }, 30);
+      setTimeout(() => { if (!m.classList.contains("on") || m.contains(document.activeElement)) return; const f = m.id === "ncModal" ? $(ncFocus) : focusables(m)[0]; if (f){ f.focus(); if (f.select) f.select(); } else { m.querySelector(".mcard")?.setAttribute("tabindex", "-1"); m.querySelector(".mcard")?.focus(); } }, 30);
     } else if (!on && at >= 0){
       const [{from}] = modalStack.splice(at, 1);
       if (from && from.isConnected && from.focus && !modalStack.length) setTimeout(() => from.focus(), 0);
@@ -2284,7 +2418,7 @@ const doneP = t => new Promise((res, rej) => { t.oncomplete = res; t.onerror = (
 const SETTINGS = ["paper","size","shared","bleed","marks","withBacks","rotBack","backMode","backColor","backTextColor","backText","backText2","backNumber","pattern","patternColor","patternAlpha","frame","plate","font","logoSize","logo2Size","logoPos","logo2Pos","textPos","logoTint","logoTintColor","logo2Tint","logo2TintColor","logoStroke","logoStrokeColor","logoStrokeW","logo2Stroke","logo2StrokeColor","logo2StrokeW"];
 function record(){
   const settings = {}; SETTINGS.forEach(k => settings[k] = state[k]);
-  return {id:proj.id, name:proj.name, created:proj.created, groupId:proj.groupId || null, albumId:proj.albumId || null, settings, commonBack:state.commonBack, logo:state.logo, logo2:state.logo2, cards:state.cards};
+  return {id:proj.id, name:proj.name, created:proj.created, groupId:proj.groupId || null, albumId:proj.albumId || null, cover:proj.cover || null, settings, commonBack:state.commonBack, logo:state.logo, logo2:state.logo2, cards:state.cards};
 }
 function usedPhotoIds(){
   const s = new Set();
@@ -2439,7 +2573,7 @@ async function openProject(id){
     } catch(_){}
     if (++k % 10 === 0){ toast(`Abriendo… ${k} de ${list.length}`, 60000); await new Promise(r => setTimeout(r, 0)); }
   }
-  proj = {id:rec.id, name:rec.name, created:rec.created, groupId:rec.groupId || null, albumId:rec.albumId || null};
+  proj = {id:rec.id, name:rec.name, created:rec.created, groupId:rec.groupId || null, albumId:rec.albumId || null, cover:rec.cover || null};
   Object.assign(state, DEFAULTS, rec.settings || {}, {commonBack:rec.commonBack || null, logo:rec.logo || null, logo2:rec.logo2 || null, cards:rec.cards || [], page:0, allFlipped:false});
   lastSig = JSON.stringify(record()); lastSavedAt = new Date(rec.updated);
   opening = false; clearUndo(); MFC.remember(LS_LAST, proj.id);
@@ -2492,7 +2626,7 @@ window.addEventListener("pagehide", () => saveProject());
 
 async function projThumb(cv, p){
   try {
-    const ref = (p.cards || []).find(c => c && c.front)?.front || p.logo2 || p.logo || p.commonBack;
+    const ref = (p.cards || []).find(c => c && c.id === p.cover && c.front)?.front || (p.cards || []).find(c => c && c.front)?.front || p.logo2 || p.logo || p.commonBack;
     if (!ref) return;
     const d = await db(), rec = await reqP(d.transaction("photos").objectStore("photos").get(ref.photoId));
     if (!rec) return;
@@ -2502,7 +2636,7 @@ async function projThumb(cv, p){
     x.drawImage(bmp, (cv.width - bmp.width*sc)/2, (cv.height - bmp.height*sc)/2, bmp.width*sc, bmp.height*sc);
   } catch(_){}
 }
-async function duplicateProject(id){
+async function duplicateProject(id, newName){
   await saveProject();
   const d = await db(), t0 = d.transaction(["projects","photos"]);
   const rec = await reqP(t0.objectStore("projects").get(id));
@@ -2511,13 +2645,14 @@ async function duplicateProject(id){
   const pid = newId("p"), map = new Map();
   list.forEach(ph => map.set(ph.id, newId("f")));
   const fix = r => r && map.has(r.photoId) ? {...r, photoId:map.get(r.photoId)} : null;
-  const cards = (rec.cards || []).map(c => ({...c, id:newId("c"), front:fix(c.front), back:fix(c.back)}));
+  const cmap = new Map(), cards = (rec.cards || []).map(c => { const nid = newId("c"); cmap.set(c.id, nid); return {...c, id:nid, front:fix(c.front), back:fix(c.back)}; });
   const t = d.transaction(["projects","photos"], "readwrite");
   list.forEach(ph => t.objectStore("photos").put({id:map.get(ph.id), projectId:pid, blob:ph.blob}));
-  t.objectStore("projects").put({...rec, id:pid, name:`${rec.name} (copia)`, created:Date.now(), updated:Date.now(), cards,
+  t.objectStore("projects").put({...rec, id:pid, name:newName || `${rec.name} — copia`, created:Date.now(), updated:Date.now(), cards, cover:cmap.get(rec.cover) || null,
     commonBack:fix(rec.commonBack), logo:fix(rec.logo), logo2:fix(rec.logo2)});
   await doneP(t);
   toast("Colección duplicada.");
+  return pid;
 }
 async function renderProjectList(){
   const box = $("plist"); box.innerHTML = '<h3 class="ghead modehead">Luli\'s Photocards</h3>';
@@ -2526,15 +2661,21 @@ async function renderProjectList(){
   const gs = await listGroups().catch(() => []), gmap = new Map(gs.map(g => [g.id, g]));
   const gname = p => gmap.get(p.groupId)?.name || "";
   const aname = p => gmap.get(p.groupId)?.albums?.find(a => a.id === p.albumId)?.name || "";
-  list.sort((a, b) => {
-    const ga = gname(a), gb = gname(b);
-    if (!ga !== !gb) return ga ? -1 : 1;
-    return ga.localeCompare(gb, "es", {sensitivity:"base"}) || aname(a).localeCompare(aname(b), "es", {sensitivity:"base"}) || b.updated - a.updated;
+  // cada grupo o artista con sus colecciones (también los que todavía no tienen); al final, las que no son de un grupo
+  const order = [];
+  gs.forEach(g => order.push({g, items: list.filter(p => p.groupId === g.id).sort((a, b) => aname(a).localeCompare(aname(b), "es", {sensitivity:"base"}) || b.updated - a.updated)}));
+  const loose = list.filter(p => !gmap.has(p.groupId));
+  if (loose.length) order.push({g:null, items:loose});
+  order.forEach(({g, items}) => {
+    const h = document.createElement("h3"); h.className = "ghead";
+    const t = document.createElement("span"); t.textContent = g ? g.name : "Sin grupo"; h.appendChild(t);
+    if (g){ const nb = document.createElement("button"); nb.className = "gnew"; nb.textContent = "+ Nueva"; nb.title = `Nueva colección de ${g.name}`; nb.setAttribute("aria-label", `Nueva colección de ${g.name}`);
+      nb.onclick = () => { closeProjects(); openNC("new", g.id); }; h.appendChild(nb); }
+    box.appendChild(h);
+    if (!items.length){ const e = document.createElement("p"); e.className = "gempty"; e.textContent = "Todavía no hay colecciones."; box.appendChild(e); }
+    items.forEach(p => addItem(p));
   });
-  let lastG = null;
-  list.forEach(p => {
-    const g = gname(p) || "Sin grupo";
-    if (g !== lastG){ const h = document.createElement("h3"); h.className = "ghead"; h.textContent = g; box.appendChild(h); lastG = g; }
+  function addItem(p){
     const it = document.createElement("div"); it.className = "pitem" + (proj && p.id === proj.id ? " cur" : "");
     const cv = document.createElement("canvas"); projThumb(cv, p);
     const info = document.createElement("div"); info.className = "pinfo";
@@ -2545,7 +2686,7 @@ async function renderProjectList(){
     const btns = document.createElement("div"); btns.className = "pbtns";
     const open = document.createElement("button"); open.className = "open";
     open.textContent = proj && p.id === proj.id ? "Abierta" : "Abrir";
-    open.onclick = async () => { closeProjects(); await openProject(p.id); };
+    open.onclick = async () => { closeProjects(); await openProject(p.id); await setView("work"); };
     const dup = document.createElement("button"); dup.textContent = "Duplicar";
     dup.onclick = async () => { await duplicateProject(p.id); renderProjectList(); };
     const del = document.createElement("button"); del.textContent = "Eliminar";
@@ -2563,7 +2704,7 @@ async function renderProjectList(){
     more.onclick = () => { extra.hidden = !extra.hidden; more.setAttribute("aria-expanded", !extra.hidden); };
     btns.append(open, more);
     it.append(cv, info, btns, extra); box.appendChild(it);
-  });
+  }
   await MFC.renderOtherProjects(box, "hojas");
 }
 /* ---------- grupos, álbumes y clasificación ---------- */
@@ -2682,65 +2823,104 @@ $("groupsClose").onclick = async () => { $("groupsModal").classList.remove("on")
 
 async function updateClassChip(){
   const chip = $("classBtn"); if (!proj) return;
-  let txt = "Elegir grupo y álbum (opcional)";
+  let txt = "Elegir grupo o artista";
   try {
     const g = proj.groupId && await getGroup(proj.groupId);
     if (g){ const a = (g.albums || []).find(x => x.id === proj.albumId); txt = a ? `${g.name} · ${a.name}` : g.name; }
   } catch(_){}
-  chip.textContent = txt; chip.classList.toggle("set", txt !== "Elegir grupo y álbum (opcional)");
+  chip.textContent = txt; chip.classList.toggle("set", txt !== "Elegir grupo o artista");
 }
 $("classBtn").onclick = () => openNC("edit");
 
 let ncMode = "new", ncGroups = [];
+/* El grupo o artista se elige tocándolo o se escribe: si no existe, se crea al guardar */
+const norm = t => (t || "").trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+let ncProjects = [];
+const ncFind = () => { const t = norm($("ncArtist").value); return t ? ncGroups.find(g => norm(g.name) === t) || null : null; };
+const ncAlbumFind = g => { const t = norm($("ncAlbumIn").value); return g && t ? (g.albums || []).find(a => norm(a.name) === t) || null : null; };
+const ncOthers = g => g ? ncProjects.filter(p => p.groupId === g.id && (ncMode === "new" || p.id !== proj?.id)).length : 0;
 async function fillNC(selG, selA){
   ncGroups = await listGroups().catch(() => []);
-  const gSel = $("ncGroup"), cur = selG !== undefined ? selG : gSel.value;
-  gSel.innerHTML = '<option value="">Sin grupo</option>' + ncGroups.map(g => `<option value="${g.id}"></option>`).join("");
-  [...gSel.options].forEach((o, i) => { if (i) o.textContent = ncGroups[i-1].name; });
-  gSel.value = ncGroups.some(g => g.id === cur) ? cur : "";
-  fillAlbums(selA);
+  if (selG !== undefined){
+    const g = ncGroups.find(x => x.id === selG);
+    $("ncArtist").value = g ? g.name : "";
+    $("ncAlbumIn").value = g && selA ? (g.albums.find(a => a.id === selA)?.name || "") : "";
+  }
+  const dl = $("ncArtistList"); dl.innerHTML = "";
+  ncGroups.forEach(g => { const o = document.createElement("option"); o.value = g.name; dl.appendChild(o); });
+  ncUpdate();
 }
-function fillAlbums(selA){
-  const g = ncGroups.find(x => x.id === $("ncGroup").value), aSel = $("ncAlbum"), cur = selA !== undefined ? selA : aSel.value;
-  const al = g ? g.albums : [];
-  aSel.innerHTML = '<option value="">Sin álbum</option>' + al.map(a => `<option value="${a.id}"></option>`).join("");
-  [...aSel.options].forEach((o, i) => { if (i) o.textContent = al[i-1].name; });
-  aSel.value = al.some(a => a.id === cur) ? cur : "";
-  aSel.disabled = !g;
+function ncUpdate(){
+  const g = ncFind(), typed = $("ncArtist").value.trim();
+  const box = $("ncChips"); box.innerHTML = "";
+  ncGroups.slice(0, 12).forEach(x => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = x.name; b.setAttribute("aria-pressed", g === x);
+    b.onclick = () => { $("ncArtist").value = x.name; $("ncAlbumIn").value = ""; ncUpdate(); };
+    box.appendChild(b);
+  });
+  const n = ncOthers(g);
+  $("ncArtistHint").textContent = g ? (n ? `Ya tenés ${n} ${n === 1 ? "colección" : "colecciones"} de ${g.name}. Esta va a ser otra más.` : `Primera colección de ${g.name}.`)
+    : typed ? `«${typed}» es nuevo: se va a guardar como grupo o artista.` : "Si no es de un grupo, dejalo vacío.";
+  const al = $("ncAlbumList"); al.innerHTML = "";
+  (g?.albums || []).forEach(a => { const o = document.createElement("option"); o.value = a.name; al.appendChild(o); });
+  suggestName();
 }
 function suggestName(){
-  const n = $("ncName"); if (n.dataset.touched) return;
-  const g = ncGroups.find(x => x.id === $("ncGroup").value), a = g && g.albums.find(x => x.id === $("ncAlbum").value);
-  if (g) n.value = a ? `${g.name} – ${a.name}` : g.name;
-  else if (ncMode === "new") n.value = n.dataset.def || "";
+  const n = $("ncName"); if (n.dataset.touched || ncPreset) return;
+  const artist = $("ncArtist").value.trim(), album = $("ncAlbumIn").value.trim(), g = ncFind();
+  if (!artist){ if (ncMode === "new") n.value = n.dataset.def || ""; return; }
+  if (album){ n.value = `${g ? g.name : artist} – ${album}`; return; }
+  const k = ncOthers(g);
+  n.value = k ? `${g.name} ${k + 1}` : (g ? g.name : artist);
 }
-$("ncGroup").onchange = () => { fillAlbums(""); suggestName(); };
-$("ncAlbum").onchange = suggestName;
+$("ncArtist").addEventListener("input", ncUpdate);
+$("ncAlbumIn").addEventListener("input", suggestName);
 $("ncName").oninput = () => { $("ncName").dataset.touched = "1"; };
-async function openNC(mode){
+async function openNC(mode, groupId){
   ncMode = mode;
   if (mode === "new") await saveProject();
-  $("ncTitle").textContent = mode === "new" ? "Nueva colección" : "Grupo y álbum de esta colección";
+  try { ncProjects = await listProjects(); } catch(_){ ncProjects = []; }
+  const preset = mode === "new" && groupId ? await getGroup(groupId).catch(() => null) : null;
+  ncPreset = preset;
+  $("ncTitle").textContent = preset ? `Nueva colección de ${preset.name}` : mode === "new" ? "Nueva colección" : "Grupo o artista de esta colección";
+  $("ncArtistField").hidden = !!preset;
+  $("ncNameLabel").textContent = preset ? "¿Cómo se llama tu colección?" : "¿Cómo se llama esta colección?";
+  $("ncName").placeholder = preset ? "Por ejemplo: Mis favoritas" : "";
+  const sg = $("ncSuggest"); sg.innerHTML = ""; sg.hidden = !preset;
+  if (preset) ["Mis favoritas", "Álbum nuevo", `Concierto ${new Date().getFullYear()}`, "Para intercambiar"].forEach(t => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = t;
+    b.onclick = () => { $("ncName").value = t; $("ncName").dataset.touched = "1"; $("ncName").focus(); };
+    sg.appendChild(b);
+  });
   $("ncOk").textContent = mode === "new" ? "Crear" : "Guardar";
-  $("ncMore").open = mode !== "new";
   const n = $("ncName"); delete n.dataset.touched;
   if (mode === "new"){
-    let k = 1; try { k = (await listProjects()).length + 1; } catch(_){}
-    n.dataset.def = `Colección ${k}`; n.value = n.dataset.def;
-    await fillNC("", "");
-    $("ncApply").checked = true;
+    n.dataset.def = `Colección ${ncProjects.length + 1}`; n.value = n.dataset.def;
+    await fillNC(groupId || "", "");
+    if (preset){ n.value = ""; }
+    $("ncApply").checked = false;
   } else {
     n.value = proj.name; n.dataset.touched = "1";
     await fillNC(proj.groupId || "", proj.albumId || "");
     $("ncApply").checked = false;
   }
+  $("ncMore").open = mode !== "new" && !!$("ncAlbumIn").value;
+  ncFocus = groupId ? "ncName" : "ncArtist";
   $("ncModal").classList.add("on");
 }
+let ncFocus = "ncArtist", ncPreset = null;
 $("ncCancel").onclick = () => $("ncModal").classList.remove("on");
 $("ncManage").onclick = openGroups;
 $("ncOk").onclick = async () => {
-  const g = ncGroups.find(x => x.id === $("ncGroup").value) || null, a = g && g.albums.find(x => x.id === $("ncAlbum").value) || null;
-  const name = $("ncName").value.trim(), apply = $("ncApply").checked;
+  const artist = $("ncArtist").value.trim(), album = $("ncAlbumIn").value.trim();
+  let g = ncFind(), a = null;
+  if (artist && !g){ g = {id:newId("g"), name:artist, logoId:null, albums:[]}; await putGroup(g); }
+  if (g && album){
+    a = ncAlbumFind(g);
+    if (!a){ const gg = (await getGroup(g.id)) || g; gg.albums = gg.albums || []; a = {id:newId("a"), name:album, logoId:null}; gg.albums.push(a); await putGroup(gg); g = gg; }
+  }
+  let name = $("ncName").value.trim(); const apply = $("ncApply").checked;
+  if (!name && g){ const k = ncOthers(g); name = k ? `${g.name} ${k + 1}` : g.name; }
   $("ncModal").classList.remove("on");
   if (ncMode === "new") await newProject();
   proj.groupId = g ? g.id : null; proj.albumId = a ? a.id : null;
@@ -2748,7 +2928,8 @@ $("ncOk").onclick = async () => {
   if (apply) await applyGroup(g, a);
   syncInputs(); renderAll(); updateClassChip();
   await saveProject(true);
-  toast(ncMode === "new" ? `Colección «${proj.name}» creada.` : "Clasificación guardada.");
+  toast(ncMode === "new" ? `Colección «${proj.name}» creada${g ? ` en ${g.name}` : ""}.` : "Guardado.");
+  if (ncMode === "new") await setView("work"); else await updateBack();
 };
 async function applyGroup(g, a){
   if (g){ state.backText = g.name; if (g.logoId){ const r = await libToRef(g.logoId); if (r) state.logo2 = r; } }
@@ -2827,6 +3008,350 @@ $("toHojasBtn").onclick = async () => {
 /* ---------- inicio ---------- */
 syncInputs(); renderAll();
 try { document.fonts.ready.then(() => renderAll()); ['700 40px "Playfair Display"', '700 40px "Caveat"'].forEach(f => document.fonts.load(f).then(() => renderAll()).catch(() => {})); } catch(_){}
+/* ---------- pantallas: Mis artistas → un artista → la colección ---------- */
+const START = (() => {
+  const q = new URLSearchParams(location.search), h = location.hash;
+  if (q.has("compartidas") || q.has("p") || q.get("vista") === "coleccion") return {v:"work"};
+  if (/^#artista-/.test(h)) return {v:"artist", g:decodeURIComponent(h.slice(9))};
+  if (/^#coleccion$/.test(h)) return {v:"work"};
+  return {v:"home"};
+})();
+let view = START.v, viewG = START.g || null;
+function showOnly(v){
+  document.body.dataset.view = v;
+  $("homeView").hidden = v !== "home"; $("artistView").hidden = v !== "artist"; $("workView").hidden = v !== "work";
+  $("appTitle").hidden = v !== "home"; $("navBack").hidden = v === "home";
+}
+showOnly(view);
+const dbP = () => new Promise(r => { const k = () => (proj && !opening) ? r() : setTimeout(k, 50); k(); });
+async function setView(v, g, how = "push"){
+  if (view === "work" && v !== "work") { try { await saveProject(); } catch(_){} closeCardMenu(false); }
+  view = v; viewG = v === "artist" ? g : null;
+  const st = {v, g:viewG, root: how === "root" || (how === "replace" && history.state?.root)};
+  const url = location.pathname + location.search.replace(/[?&]vista=coleccion/, "").replace(/^&/, "?") + (v === "artist" ? "#artista-" + encodeURIComponent(g) : v === "work" ? "#coleccion" : "");
+  try { if (how === "push") history.pushState(st, "", url); else history.replaceState(st, "", url); } catch(_){}
+  showOnly(v); window.scrollTo(0, 0);
+  await renderView();
+}
+async function renderView(){
+  if (view === "home") await renderHome();
+  else if (view === "artist") await renderArtist(viewG);
+  else { await updateBack(); renderAll(); }
+}
+async function updateBack(){
+  const b = $("navBack");
+  if (view === "artist"){ b.textContent = "← Mis artistas"; b.setAttribute("aria-label", "Volver a Mis artistas"); return; }
+  const g = proj && proj.groupId ? await getGroup(proj.groupId).catch(() => null) : null;
+  b.textContent = g ? `← ${g.name}` : "← Mis artistas";
+  b.setAttribute("aria-label", g ? `Volver a las colecciones de ${g.name}` : "Volver a Mis artistas");
+}
+$("navBack").onclick = async () => {
+  let parent = {v:"home"};
+  if (view === "work" && proj && proj.groupId && await getGroup(proj.groupId).catch(() => null)) parent = {v:"artist", g:proj.groupId};
+  const prev = history.state;
+  // si se llegó desde la pantalla de arriba, volver en el historial (así el botón «atrás» del teléfono también anda)
+  if (prev && !prev.root && prev.v === view) history.back();
+  else await setView(parent.v, parent.g, parent.v === "home" ? "root" : "replace");
+};
+window.addEventListener("popstate", async e => {
+  const st = e.state || {v:"home"};
+  if (st.v === view && st.g === viewG) return;
+  if (view === "work") { try { await saveProject(); } catch(_){} }
+  view = st.v; viewG = st.g || null; showOnly(view); await renderView();
+});
+const normKey = t => norm(t).replace(/[\s\-_.·'’]/g, "");
+const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+function initialOf(name){ return ((name || "?").trim()[0] || "?").toLocaleUpperCase("es"); }
+function colorOf(name){ let h = 0; for (const ch of name || "") h = (h*31 + ch.charCodeAt(0)) % 360; return `hsl(${h},55%,48%)`; }
+async function paintAvatar(el, g){
+  el.innerHTML = ""; el.textContent = initialOf(g.name); el.style.background = colorOf(g.name);
+  const id = g.photoId; if (!id) return;
+  try {
+    const blob = await getLib(id); if (!blob) return;
+    const bmp = await createImageBitmap(blob), cv = document.createElement("canvas"), S = 192;
+    cv.width = cv.height = S; const x = cv.getContext("2d"), k = Math.max(S/bmp.width, S/bmp.height);
+    x.drawImage(bmp, (S - bmp.width*k)/2, (S - bmp.height*k)/2, bmp.width*k, bmp.height*k); bmp.close && bmp.close();
+    el.textContent = ""; el.style.background = "#fff"; el.appendChild(cv);
+  } catch(_){}
+}
+function notice(el, text, label, fn){
+  const n = $(el); n.querySelector("span").textContent = text;
+  const b = n.querySelector("button"); b.hidden = !label; b.textContent = label || "";
+  b.onclick = async () => { n.hidden = true; await fn(); };
+  n.hidden = false; clearTimeout(n._t); n._t = setTimeout(() => n.hidden = true, 12000);
+}
+async function libraryData(){
+  await dbP();
+  const [gs, list] = await Promise.all([listGroups().catch(() => []), listProjects().catch(() => [])]);
+  return {gs, list, gmap:new Map(gs.map(g => [g.id, g]))};
+}
+const cardsOf = p => (proj && p.id === proj.id) ? state.cards.length : (p.cardCount ?? (p.cards || []).length);
+async function renderHome(){
+  const {gs, list, gmap} = await libraryData(); if (view !== "home") return;
+  const q = normKey($("artistSearch").value);
+  const grid = $("artistGrid"); grid.innerHTML = "";
+  $("homeEmpty").hidden = gs.length > 0; $("searchRow").hidden = gs.length === 0; grid.hidden = gs.length === 0;
+  const shown = gs.filter(g => !q || normKey(g.name).includes(q));
+  shown.forEach(g => {
+    const n = list.filter(p => p.groupId === g.id).length;
+    const b = document.createElement("button"); b.className = "artcard"; b.dataset.g = g.id;
+    const av = document.createElement("span"); av.className = "avatar"; av.setAttribute("aria-hidden", "true"); paintAvatar(av, g);
+    const nm = document.createElement("b"); nm.textContent = g.name;
+    const sm = document.createElement("small"); sm.textContent = plural(n, "colección", "colecciones");
+    b.append(av, nm, sm); b.setAttribute("aria-label", `${g.name}, ${sm.textContent}`);
+    b.onclick = () => setView("artist", g.id);
+    grid.appendChild(b);
+  });
+  const typed = $("artistSearch").value.trim();
+  const add = document.createElement("button"); add.className = "artcard add"; add.id = "addArtistCard";
+  add.innerHTML = '<span class="plus" aria-hidden="true">＋</span><span></span>';
+  add.lastChild.textContent = q && !shown.length ? `Agregar «${typed}»` : "Agregar artista o grupo";
+  add.onclick = () => openArtistDialog(null, q && !shown.length ? typed : "");
+  grid.appendChild(add);
+  // colecciones de antes, sin artista (las vacías no se muestran)
+  const loose = list.filter(p => !gmap.has(p.groupId) && cardsOf(p) > 0);
+  $("looseSec").hidden = !loose.length;
+  const box = $("looseList"); box.innerHTML = "";
+  loose.forEach(p => box.appendChild(colItem(p, true)));
+}
+$("artistSearch").addEventListener("input", () => renderHome());
+$("homeAddArtist").onclick = () => openArtistDialog(null, "");
+async function renderArtist(gid){
+  const {list, gmap} = await libraryData(); if (view !== "artist") return;
+  const g = gmap.get(gid);
+  if (!g){ await setView("home", null, "root"); return; }
+  const mine = list.filter(p => p.groupId === g.id).sort((a, b) => b.updated - a.updated);
+  paintAvatar($("artAvatar"), g);
+  $("artName").textContent = g.name; $("artCount").textContent = plural(mine.length, "colección", "colecciones");
+  updateBack();
+  const box = $("colList"); box.innerHTML = "";
+  mine.forEach(p => box.appendChild(colItem(p, false)));
+  $("colEmpty").hidden = mine.length > 0;
+}
+function colItem(p, loose){
+  const it = document.createElement("div"); it.className = "colitem"; it.dataset.p = p.id;
+  const open = document.createElement("button"); open.className = "colopen";
+  const cv = document.createElement("canvas"); projThumb(cv, p);
+  const tx = document.createElement("span"), b = document.createElement("b"), sm = document.createElement("small");
+  b.textContent = p.name; sm.textContent = plural(cardsOf(p), "tarjeta", "tarjetas");
+  tx.append(b, sm); open.append(cv, tx);
+  open.setAttribute("aria-label", `Abrir ${p.name}, ${sm.textContent}`);
+  open.onclick = () => openCollection(p.id);
+  it.appendChild(open);
+  if (loose){ const pk = document.createElement("button"); pk.className = "pickbtn"; pk.textContent = "Elegir artista"; pk.onclick = () => moveToArtist(p, "Elegir artista"); it.appendChild(pk); }
+  const more = document.createElement("button"); more.className = "pmorebtn"; more.textContent = "⋯"; more.setAttribute("aria-haspopup", "menu"); more.setAttribute("aria-label", `Más acciones de ${p.name}`);
+  more.onclick = () => popMenu(more, [
+    {label:"Cambiar nombre", fn:() => renameCollection(p)},
+    {label:"Cambiar portada", fn:() => chooseCover(p), off: cardsOf(p) === 0},
+    {label:"Duplicar colección", fn:() => duplicateCollection(p)},
+    {label: loose ? "Elegir artista" : "Mover a otro artista", fn:() => moveToArtist(p, loose ? "Elegir artista" : "Mover a otro artista")},
+    {label:"Eliminar", danger:true, confirm:true, fn:() => deleteCollection(p)}
+  ]);
+  it.appendChild(more);
+  return it;
+}
+async function openCollection(id){
+  if (!proj || proj.id !== id){ await saveProject(); await openProject(id); }
+  await setView("work");
+}
+/* cambia datos de una colección sin abrirla (o, si está abierta, en memoria y guardando) */
+async function updateMeta(id, ch){
+  if (proj && proj.id === id){ Object.assign(proj, ch); syncInputs(); updateClassChip(); await saveProject(true); return; }
+  const d = await db(), t = d.transaction("projects", "readwrite"), st = t.objectStore("projects");
+  const rec = await reqP(st.get(id)); if (!rec) return;
+  st.put({...rec, ...ch, updated:Date.now()}); await doneP(t);
+}
+const refresh = () => renderView();
+function askName(title, value, okLabel = "Guardar"){
+  return new Promise(res => {
+    $("nameTitle").textContent = title; $("nameIn").value = value; $("nameOk").textContent = okLabel;
+    const done = v => { $("nameModal").classList.remove("on"); $("nameOk").onclick = $("nameCancel").onclick = null; $("nameIn").onkeydown = null; res(v); };
+    $("nameOk").onclick = () => { const v = $("nameIn").value.trim(); if (!v){ $("nameIn").focus(); return; } done(v); };
+    $("nameCancel").onclick = () => done(null);
+    $("nameIn").onkeydown = e => { if (e.key === "Enter") $("nameOk").click(); };
+    $("nameModal").classList.add("on");
+  });
+}
+async function renameCollection(p){
+  const v = await askName("Cambiar nombre", p.name); if (!v || v === p.name) return;
+  await updateMeta(p.id, {name:v}); await refresh(); toast("Nombre cambiado.");
+}
+async function duplicateCollection(p){
+  if (proj && p.id === proj.id) await saveProject(true);
+  const v = await askName("Duplicar colección", `${p.name} — copia`, "Duplicar"); if (!v) return;
+  await duplicateProject(p.id, v); await refresh();
+}
+async function deleteCollection(p){
+  const cur = proj && p.id === proj.id;
+  if (cur) await saveProject(true);
+  await keepDeleted(p.id); await deleteProject(p.id);
+  if (cur){ proj = null; const rest = await listProjects(); if (rest.length) await openProject(rest[0].id); else await newProject(); }
+  await refresh();
+  notice(view === "home" ? "homeNotice" : "artNotice", `Eliminaste «${p.name}».`, "Recuperarla", async () => { await recoverDeleted(); await refresh(); });
+}
+async function moveToArtist(p, title){
+  const g = await pickArtist(title, p.groupId); if (!g || g.id === p.groupId) return;
+  const old = p.groupId || null, oldA = p.albumId || null;
+  await updateMeta(p.id, {groupId:g.id, albumId:null}); await refresh();
+  notice(view === "home" ? "homeNotice" : "artNotice", `«${p.name}» ahora está en ${g.name}.`, "Deshacer", async () => { await updateMeta(p.id, {groupId:old, albumId:oldA}); await refresh(); toast("Listo, volvió a como estaba."); });
+}
+/* elegir un artista: buscar entre los que hay o crear uno */
+function pickArtist(title, currentId){
+  return new Promise(async res => {
+    const gs = await listGroups().catch(() => []);
+    $("pickTitle").textContent = title || "Elegir artista"; $("pickSearch").value = "";
+    const done = g => { $("pickModal").classList.remove("on"); $("pickCancel").onclick = null; res(g); };
+    const draw = () => {
+      const q = normKey($("pickSearch").value), typed = $("pickSearch").value.trim(), box = $("pickList"); box.innerHTML = "";
+      const shown = gs.filter(g => !q || normKey(g.name).includes(q));
+      shown.forEach(g => {
+        const b = document.createElement("button"); const av = document.createElement("span"); av.className = "avatar"; paintAvatar(av, g);
+        const t = document.createElement("span"); t.textContent = g.name + (g.id === currentId ? " (ahora está acá)" : "");
+        b.append(av, t); b.setAttribute("aria-current", g.id === currentId); b.onclick = () => done(g); box.appendChild(b);
+      });
+      if (typed && !gs.some(g => normKey(g.name) === q)){
+        const c = document.createElement("button"); c.className = "create"; c.textContent = `＋ Crear «${typed}»`;
+        c.onclick = async () => { const g = {id:newId("g"), name:typed, logoId:null, albums:[], photoId:null, kind:null, created:Date.now()}; await putGroup(g); done(g); };
+        box.appendChild(c);
+      }
+      if (!box.children.length){ const p = document.createElement("p"); p.className = "muted"; p.style.margin = "0"; p.textContent = "Escribí el nombre para crearlo."; box.appendChild(p); }
+    };
+    $("pickSearch").oninput = draw; draw();
+    $("pickCancel").onclick = () => done(null);
+    $("pickModal").classList.add("on");
+  });
+}
+/* portada: una de sus tarjetas */
+async function chooseCover(p){
+  if (proj && p.id === proj.id) await saveProject(true);
+  const d = await db(), rec = await reqP(d.transaction("projects").objectStore("projects").get(p.id)); if (!rec) return;
+  const grid = $("coverGrid"); grid.innerHTML = "";
+  const close = () => $("coverModal").classList.remove("on");
+  $("coverCancel").onclick = close;
+  (rec.cards || []).filter(c => c.front).slice(0, 120).forEach(async c => {
+    const b = document.createElement("button"); b.setAttribute("aria-current", c.id === rec.cover); b.setAttribute("aria-label", "Usar esta tarjeta de portada");
+    const cv = document.createElement("canvas"); b.appendChild(cv); grid.appendChild(b);
+    b.onclick = async () => { close(); await updateMeta(p.id, {cover:c.id}); await refresh(); toast("Portada cambiada."); };
+    try {
+      const ph = await reqP((await db()).transaction("photos").objectStore("photos").get(c.front.photoId)); if (!ph) return;
+      const bmp = await createImageBitmap(ph.blob), W = 160, H = Math.round(W*size().h/size().w);
+      cv.width = W; cv.height = H; const x = cv.getContext("2d"), k = Math.max(W/bmp.width, H/bmp.height);
+      x.drawImage(bmp, (W - bmp.width*k)/2, (H - bmp.height*k)/2, bmp.width*k, bmp.height*k); bmp.close && bmp.close();
+    } catch(_){}
+  });
+  $("coverModal").classList.add("on");
+}
+/* menú «⋯» de una colección o de un artista */
+let popFrom = null;
+function popMenu(btn, items){
+  const m = $("popMenu"); m.innerHTML = ""; popFrom = btn;
+  items.forEach(it => {
+    const b = document.createElement("button"); b.setAttribute("role", "menuitem"); b.textContent = it.label; b.disabled = !!it.off;
+    if (it.danger) b.className = "danger";
+    b.onclick = () => {
+      if (it.confirm && !b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "¿Seguro? Tocá de nuevo"; return; }
+      closePop(false); it.fn();
+    };
+    m.appendChild(b);
+  });
+  m.hidden = false;
+  const r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + "px";
+  m.style.top = (r.bottom + h + 8 > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+  btn.setAttribute("aria-expanded", "true");
+  m.querySelector("button:not(:disabled)")?.focus();
+}
+function closePop(back){
+  const m = $("popMenu"); if (m.hidden) return;
+  m.hidden = true; if (popFrom){ popFrom.setAttribute("aria-expanded", "false"); if (back) popFrom.focus(); } popFrom = null;
+}
+document.addEventListener("pointerdown", e => { if (!$("popMenu").hidden && !e.target.closest("#popMenu") && e.target !== popFrom) closePop(false); });
+window.addEventListener("scroll", () => closePop(false), {passive:true});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("popMenu").hidden){ e.preventDefault(); e.stopImmediatePropagation(); closePop(true); } }, true);
+/* agregar o cambiar un artista */
+const KINDS = [{id:"artista", label:"Artista"}, {id:"grupo", label:"Grupo"}, {id:"otro", label:"Otro"}];
+let artEdit = null, artPhoto = undefined, artKind = null, artAllowDup = false, artGroups = [];
+async function openArtistDialog(g, name){
+  artEdit = g; artPhoto = undefined; artKind = g ? g.kind || null : null; artAllowDup = false;
+  artGroups = await listGroups().catch(() => []);
+  $("artModalTitle").textContent = g ? "Cambiar artista o grupo" : "Agregar artista o grupo";
+  $("artOk").textContent = g ? "Guardar" : "Crear";
+  $("artNameIn").value = g ? g.name : (name || "");
+  $("artKindBox").open = !!artKind;
+  await artPreview(); artDraw();
+  $("artModal").classList.add("on");
+}
+async function artPreview(){
+  const el = $("artPhotoPrev"), name = $("artNameIn").value.trim() || "?";
+  if (artPhoto instanceof Blob){
+    const bmp = await createImageBitmap(artPhoto), cv = document.createElement("canvas"); cv.width = cv.height = 96;
+    const x = cv.getContext("2d"), k = Math.max(96/bmp.width, 96/bmp.height); x.drawImage(bmp, (96 - bmp.width*k)/2, (96 - bmp.height*k)/2, bmp.width*k, bmp.height*k);
+    el.innerHTML = ""; el.style.background = "#fff"; el.appendChild(cv);
+  } else await paintAvatar(el, {name, photoId: artPhoto === null ? null : artEdit?.photoId});
+  $("artPhotoDel").hidden = !(artPhoto instanceof Blob || (artPhoto === undefined && artEdit?.photoId));
+  $("artPhotoBtn").textContent = $("artPhotoDel").hidden ? "Elegir foto" : "Cambiar foto";
+}
+function artDraw(){
+  const v = $("artNameIn").value.trim(), k = normKey(v);
+  const match = k ? artGroups.find(x => normKey(x.name) === k && x.id !== artEdit?.id) : null;
+  $("artDup").hidden = !match || artAllowDup;
+  if (match){ $("artDupText").textContent = `Ya tenés a ${match.name}. ¿Querés abrirlo?`; $("artDupOpen").textContent = `Abrir ${match.name}`; $("artDupOpen").onclick = () => { $("artModal").classList.remove("on"); setView("artist", match.id); }; }
+  $("artOk").disabled = !v || (!!match && !artAllowDup);
+  seg($("artKindSeg"), KINDS, () => artKind, v2 => { artKind = artKind === v2 ? null : v2; artDraw(); });
+  [...$("artKindSeg").children].forEach(b => b.onclick = () => { const id = KINDS.find(x => x.label === b.textContent).id; artKind = artKind === id ? null : id; artDraw(); });
+}
+$("artNameIn").addEventListener("input", () => { artAllowDup = false; artDraw(); if (!(artPhoto instanceof Blob)) artPreview(); });
+$("artNameIn").addEventListener("keydown", e => { if (e.key === "Enter" && !$("artOk").disabled) $("artOk").click(); });
+$("artDupNew").onclick = () => { artAllowDup = true; artDraw(); $("artNameIn").focus(); };
+$("artPhotoBtn").onclick = () => $("fileArtist").click();
+$("artPhotoDel").onclick = () => { artPhoto = null; artPreview(); };
+$("fileArtist").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const bmp = await createImageBitmap(f), k = Math.min(1, 480 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
+    c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k); c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    artPhoto = await new Promise(r => c.toBlob(r, "image/jpeg", 0.88)); await artPreview();
+  } catch(_){ toast("No se pudo abrir esa imagen."); }
+};
+$("artCancel").onclick = () => $("artModal").classList.remove("on");
+$("artOk").onclick = async () => {
+  const name = $("artNameIn").value.trim(); if (!name) return;
+  let photoId = artEdit ? artEdit.photoId || null : null;
+  if (artPhoto instanceof Blob) photoId = await putLib(artPhoto); else if (artPhoto === null) photoId = null;
+  $("artModal").classList.remove("on");
+  if (artEdit){
+    const g = await getGroup(artEdit.id); if (!g) return;
+    g.name = name; g.photoId = photoId; g.kind = artKind; await putGroup(g);
+    await refresh(); updateClassChip(); toast("Guardado.");
+  } else {
+    const g = {id:newId("g"), name, logoId:null, albums:[], photoId, kind:artKind, created:Date.now()};
+    await putGroup(g); await setView("artist", g.id); toast(`Listo: ${name} está en Mis artistas.`);
+  }
+};
+$("artMenuBtn").onclick = async () => {
+  const g = await getGroup(viewG); if (!g) return;
+  const n = (await listProjects()).filter(p => p.groupId === g.id).length;
+  popMenu($("artMenuBtn"), [
+    {label:"Cambiar nombre o foto", fn:() => openArtistDialog(g)},
+    {label: n ? "Eliminar (primero mové sus colecciones)" : "Eliminar", danger:true, confirm:true, off: n > 0, fn: async () => {
+      const d = await db(), t = d.transaction("groups", "readwrite"); t.objectStore("groups").delete(g.id); await doneP(t);
+      await setView("home", null, "root"); toast(`${g.name} se quitó de Mis artistas.`);
+    }}
+  ]);
+};
+$("artNewCol").onclick = () => openNC("new", viewG);
+$("hojasLink2").addEventListener("click", async e => { e.preventDefault(); try { await saveProject(); } catch(_){} location.href = "hojas.html"; });
+/* Decorar: el nombre y la imagen del artista se agregan solo si se pide */
+async function renderArtistDecor(){
+  const box = $("artistDecor"), g = proj && proj.groupId ? await getGroup(proj.groupId).catch(() => null) : null;
+  box.hidden = !g; if (!g) return;
+  $("decorName").textContent = `Agregar el nombre de ${g.name}`;
+  $("decorName").onclick = () => { state.backMode = "design"; state.backText = g.name; syncInputs(); renderBackTab(); scheduleGrid(); toast(`Listo: dice ${g.name} en la parte de atrás.`); };
+  const img = g.logoId || g.photoId;
+  $("decorImg").hidden = !img; $("decorImg").textContent = `Agregar la imagen de ${g.name}`;
+  $("decorImg").onclick = async () => { const r = await libToRef(img); if (!r) return; state.backMode = "design"; state.logo2 = r; renderBackTab(); scheduleGrid(); toast("Imagen agregada en la parte de atrás."); };
+}
+
 // fotos compartidas desde la galería: si lo último que se usó fue Hojas de fotos, van allá
 const toHojas = (() => { const q = new URLSearchParams(location.search); return q.has("compartidas") && !q.has("nuevo") && MFC.recall("mfc-modo") === "hojas"; })();
 if (toHojas) location.replace("hojas.html" + location.search);
@@ -2859,6 +3384,8 @@ setSaveState("saving"); // mientras abre la última colección
     if (shared.files.length) await addFronts(shared.files);
     else toast("No llegaron fotos. Probá compartirlas de nuevo.", 4000);
   }
+  try { history.replaceState({v:view, g:viewG, root:true}, "", location.href.replace(/[?&]vista=coleccion/, "")); } catch(_){}
+  await renderView();
   MFC.cloud.init({mount: $("cloudMount"), flush: () => saveProject(), onRemoteChange: async ({changed, removed, groups}) => {
     if (proj && removed.includes(proj.id)){
       proj = null; const list = await listProjects();
@@ -2866,6 +3393,7 @@ setSaveState("saving"); // mientras abre la última colección
     } else if (proj && !opening && changed.includes(proj.id) && JSON.stringify(record()) === lastSig) await openProject(proj.id);
     if ($("projModal").classList.contains("on")) renderProjectList();
     if (groups){ updateClassChip(); if ($("groupsModal").classList.contains("on")) renderGroups(); }
+    if (view !== "work") renderView(); else updateBack();
   }});
 })();
 const swAllowed = location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname);

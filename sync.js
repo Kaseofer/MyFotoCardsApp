@@ -233,19 +233,24 @@
     const d = await openDb("cards"), r = await reqP(d.transaction("libphotos").objectStore("libphotos").get(id));
     return r && r.blob ? await hashOf(id, r.blob) : null;
   }
+  // la foto y el tipo del artista viajan como una entrada especial dentro de «albumes» (así no hace falta otra columna)
+  const ART = "_artista";
+  const realAlbums = r => (r.albumes || []).filter(a => a && a.id !== ART);
+  const artOf = r => (r.albumes || []).find(a => a && a.id === ART) || {};
   async function localSig(g){
-    return JSON.stringify({n:g.name, l:await libHash(g.logoId), a:await Promise.all((g.albums || []).map(async a => ({id:a.id, n:a.name, l:await libHash(a.logoId)})))});
+    return JSON.stringify({n:g.name, l:await libHash(g.logoId), p:await libHash(g.photoId), k:g.kind || null, a:await Promise.all((g.albums || []).map(async a => ({id:a.id, n:a.name, l:await libHash(a.logoId)})))});
   }
-  const remoteSig = r => JSON.stringify({n:r.nombre, l:r.logo_hash || null, a:(r.albumes || []).map(a => ({id:a.id, n:a.nombre, l:a.logo_hash || null}))});
+  const remoteSig = r => JSON.stringify({n:r.nombre, l:r.logo_hash || null, p:artOf(r).foto_hash || null, k:artOf(r).tipo || null, a:realAlbums(r).map(a => ({id:a.id, n:a.nombre, l:a.logo_hash || null}))});
   async function pushGroup(g, meta){
     const up = async id => {
       if (!id) return null;
       const d = await openDb("cards"), r = await reqP(d.transaction("libphotos").objectStore("libphotos").get(id));
       return r && r.blob ? await upload(id, r.blob) : null;
     };
-    const row = {id:g.id, nombre:g.name || "Sin nombre", logo_hash:await up(g.logoId),
-      albumes:await Promise.all((g.albums || []).map(async a => ({id:a.id, nombre:a.name || "Sin nombre", logo_hash:await up(a.logoId)}))),
-      actualizado:new Date().toISOString()};
+    const albumes = await Promise.all((g.albums || []).map(async a => ({id:a.id, nombre:a.name || "Sin nombre", logo_hash:await up(a.logoId)})));
+    const foto = await up(g.photoId);
+    if (foto || g.kind) albumes.push({id:ART, foto_hash:foto, tipo:g.kind || null});
+    const row = {id:g.id, nombre:g.name || "Sin nombre", logo_hash:await up(g.logoId), albumes, actualizado:new Date().toISOString()};
     const back = must(await sb.from("grupos").upsert(row).select("*").single());
     meta.g[g.id] = {s:remoteSig(back), t:back.actualizado};
   }
@@ -260,8 +265,9 @@
       hashStore()[`${id}|${blob.size}|${blob.type}`] = h; byHash.set(h, id);
       return id;
     };
-    const g = {id:r.id, name:r.nombre, logoId:await lib(r.logo_hash),
-      albums:await Promise.all((r.albumes || []).map(async a => ({id:a.id, name:a.nombre, logoId:await lib(a.logo_hash)})))};
+    const art = artOf(r);
+    const g = {id:r.id, name:r.nombre, logoId:await lib(r.logo_hash), photoId:await lib(art.foto_hash), kind:art.tipo || null,
+      albums:await Promise.all(realAlbums(r).map(async a => ({id:a.id, name:a.nombre, logoId:await lib(a.logo_hash)})))};
     const d = await openDb("cards"), t = d.transaction("groups", "readwrite");
     t.objectStore("groups").put(g); await doneP(t);
     meta.g[r.id] = {s:remoteSig(r), t:r.actualizado};
