@@ -3,7 +3,7 @@
    - La página se pide primero a la red (así siempre llega la última versión) y,
      si no hay conexión, se usa la copia guardada.
    - Recibe las fotos que se comparten desde la galería (Android) y se las pasa a la página. */
-const VERSION = "v8";
+const VERSION = "v9";
 const APP = `app-${VERSION}`, RUNTIME = "runtime", SHARED = "compartidas";
 const CORE = [
   "./", "./index.html", "./photocards.html", "./common.js?v=6", "./sync.js?v=7", "./manifest.webmanifest",
