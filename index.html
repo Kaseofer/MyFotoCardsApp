@@ -303,6 +303,7 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
 .edfoot .sp{flex:1}
 .edfoot .btn{min-width:96px}
 .statusrow{display:flex;align-items:center;gap:6px}
+.backundo{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px}
 /* pantallas: Mis artistas → un artista → la colección */
 .appbar{max-width:1040px;margin:0 auto;padding:18px 16px 0}
 .appbar .topbar{min-height:44px}
@@ -556,7 +557,7 @@ details.ncgroup .field{margin:0 0 10px}
           </div>
         </div>
       </div>
-      <div class="prevcol"><canvas id="backPrev" class="backprev"></canvas><p class="hint" id="backDragHint" style="text-align:center">Arrastrá los logos o el texto sobre la tarjeta para subirlos o bajarlos.</p></div>
+      <div class="prevcol"><canvas id="backPrev" class="backprev"></canvas><div class="backundo"><button class="btn small" id="backUndo" title="Volver un paso atrás">↶ Deshacer</button><button class="btn small" id="backRevert" title="Deja la parte de atrás como estaba cuando entraste a Decorar">Volver a como estaba</button></div><p class="hint" id="backDragHint" style="text-align:center">Arrastrá los logos o el texto sobre la tarjeta para subirlos o bajarlos.</p></div>
     </div>
   </section>
 
@@ -1289,7 +1290,30 @@ $("fileOne").onchange = async e => {
 };
 
 /* ---------- pestañas ---------- */
+/* Decorar: lo que se cambia acá se puede deshacer de a un paso o volver todo a como estaba al entrar */
+const BACK_KEYS = ["backMode","backColor","backTextColor","backText","backText2","backNumber","pattern","patternColor","patternAlpha","frame","plate","font","logoSize","logo2Size","logoPos","logo2Pos","textPos","logoTint","logoTintColor","logo2Tint","logo2TintColor","logoStroke","logoStrokeColor","logoStrokeW","logo2Stroke","logo2StrokeColor","logo2StrokeW","logo","logo2","commonBack"];
+const backSig = () => JSON.stringify(BACK_KEYS.map(k => state[k] ?? null));
+let backStart = null; // {pid, sig, vals}
+function markBackStart(){
+  if (!proj) return;
+  backStart = {pid:proj.id, sig:backSig(), vals:JSON.parse(JSON.stringify(Object.fromEntries(BACK_KEYS.map(k => [k, state[k] ?? null]))))};
+  backButtons();
+}
+function backButtons(){
+  if (!$("backUndo")) return;
+  const changed = !!backStart && proj && backStart.pid === proj.id && backSig() !== backStart.sig;
+  $("backRevert").disabled = !changed;
+  $("backUndo").disabled = !changed;
+}
+$("backUndo").onclick = () => { undo(); backButtons(); };
+$("backRevert").onclick = () => {
+  if (!backStart || !proj || backStart.pid !== proj.id) return;
+  Object.assign(state, JSON.parse(JSON.stringify(backStart.vals)));
+  syncInputs(); renderBackTab(); scheduleGrid(); backButtons();
+  toast("Listo: la parte de atrás volvió a como estaba.");
+};
 function setTab(tab){
+  if (tab === "back" && state.tab !== "back") markBackStart();
   state.tab = tab;
   document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === tab));
   ["col","back","print"].forEach(t => $("tab-"+t).hidden = t !== state.tab);
@@ -1514,6 +1538,8 @@ function seg(el, items, get, set){
   });
 }
 function renderBackTab(){
+  if (!backStart || !proj || backStart.pid !== proj.id) markBackStart();
+  backButtons();
   seg($("backModeSeg"), [{id:"design", label:"Un diseño"}, {id:"image", label:"Una foto mía"}], () => state.backMode, v => state.backMode = v);
   seg($("fontSeg"), FONTS, () => state.font, v => state.font = v);
   renderPresets(); renderArtistDecor();
@@ -2490,6 +2516,7 @@ function showSaveInfo(){ setSaveState(saveError || !dbOk ? "error" : "saved"); t
 const SAVE_DELAY = 2500, UNDO_MAX = 40;
 let autoTimer = 0, seenSig = null, changedAt = 0, undoBase = null, undoStack = [];
 function tick(){
+  if (state.tab === "back") backButtons();
   if (!proj || opening) return;
   const sig = JSON.stringify(record()), now = Date.now();
   if (sig !== seenSig){ seenSig = sig; changedAt = now; rememberSettings(); }
