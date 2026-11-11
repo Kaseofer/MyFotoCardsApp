@@ -340,6 +340,13 @@
     must(await sb.auth.signInWithOtp({email, options:{emailRedirectTo:to, shouldCreateUser:true}}));
   }
   async function verifyCode(email, token){ await lib(); must(await sb.auth.verifyOtp({email, token, type:"email"})); }
+  // Con contraseña se entra sin esperar el correo (el correo gratis de Supabase manda pocos por hora)
+  async function signInPass(email, password){ await lib(); must(await sb.auth.signInWithPassword({email, password})); }
+  async function setPassword(password){
+    await lib();
+    const d = must(await sb.auth.updateUser({password, data:{tiene_clave:true}}));
+    if (d && d.user) user = d.user;
+  }
   async function signOut(){ await lib(); clearInterval(timer); await sb.auth.signOut({scope:"local"}); user = null; setStatus("off"); }
   async function deleteAccount(){
     await lib();
@@ -427,9 +434,20 @@
         <p>Entraste como <b class="em"></b>. Tus proyectos y grupos de las dos modalidades se guardan solos en la nube y aparecen en todos los dispositivos donde entres.</p>
         <p class="st" aria-live="polite"></p>
         <div class="row"><button class="pri" data-a="sync">Sincronizar ahora</button><button data-a="out">Salir</button></div>
+        <form data-f="setpass" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px">
+          <p class="pdesc"></p>
+          <div class="row">
+            <input type="password" name="pass" required minlength="6" autocomplete="new-password" placeholder="Contraseña nueva (6 o más)" aria-label="Contraseña nueva" style="flex:1;min-width:160px">
+            <button type="submit">Guardar</button>
+          </div>
+          <p class="msg" aria-live="polite"></p>
+        </form>
         <p>Al salir, lo que ya está en este dispositivo se queda acá.</p>
         <button class="link danger" data-a="del">Borrar mi cuenta y todo lo que hay en la nube</button>`;
       c.querySelector(".em").textContent = user.email || "";
+      c.querySelector(".pdesc").textContent = user.user_metadata && user.user_metadata.tiene_clave
+        ? "Ya tenés contraseña: en otro dispositivo entrás con tu correo y la contraseña. Si querés, cambiala:"
+        : "Ponele una contraseña a tu cuenta y en los otros dispositivos entrás con ella, sin esperar el correo:";
       c.querySelector(".st").textContent = statusText();
       c.querySelector(".st").classList.toggle("err", status.st === "error");
     } else if (view === "email"){
@@ -437,7 +455,9 @@
         <p>Entrá con tu correo y tus proyectos y grupos se guardan solos. Así los tenés en el teléfono y en la computadora. Sin cuenta, la app sigue funcionando igual en este dispositivo.</p>
         <form class="col" data-f="email" style="display:flex;flex-direction:column;gap:10px">
           <input type="email" name="email" required autocomplete="email" placeholder="tu@correo.com" aria-label="Correo">
-          <button class="pri" type="submit">Mandarme el enlace para entrar</button>
+          <input type="password" name="pass" autocomplete="current-password" placeholder="Contraseña (si ya le pusiste una)" aria-label="Contraseña">
+          <button class="pri" type="submit" data-how="pass">Entrar con contraseña</button>
+          <button type="submit" data-how="link">Mandarme un enlace al correo</button>
         </form>
         <p class="msg" aria-live="polite"></p>`;
       const inp = c.querySelector("input"); inp.value = pendingEmail; setTimeout(() => inp.focus(), 50);
@@ -456,7 +476,10 @@
   }
   function errText(e){
     const m = (e && e.message) || "";
-    if (/rate limit|too many|security purposes/i.test(m)) return "Se pidieron muchos correos seguidos. Esperá unos minutos y probá de nuevo.";
+    if (/invalid login credentials/i.test(m)) return "El correo o la contraseña no son correctos. Si todavía no le pusiste contraseña, pedí el enlace al correo.";
+    if (/at least|too short|weak/i.test(m)) return "La contraseña tiene que tener 6 caracteres o más.";
+    if (/different from the old|same password/i.test(m)) return "Es la misma contraseña que ya tenías.";
+    if (/rate limit|too many|security purposes/i.test(m)) return "Se pidieron muchos correos seguidos (el correo gratis manda 2 por hora). Si ya le pusiste contraseña, entrá con ella; si no, esperá un rato.";
     if (/expired|invalid/i.test(m)) return "El código no es correcto o venció. Pedí otro correo.";
     if (/fetch|network|cargar/i.test(m)) return "No hay conexión con la nube. Revisá internet.";
     return "No se pudo. " + m;
@@ -483,12 +506,23 @@
       });
       modal.addEventListener("submit", async e => {
         e.preventDefault();
-        const f = e.target, msg = modal.querySelector(".msg"), sub = f.querySelector("button");
-        sub.disabled = true; msg.classList.remove("err");
+        const f = e.target, msg = f.querySelector(".msg") || modal.querySelector(".msg");
+        const sub = e.submitter || f.querySelector("button");
+        msg.classList.remove("err");
+        if (f.dataset.f === "email" && sub.dataset.how === "pass" && !f.pass.value){ msg.textContent = "Escribí la contraseña, o pedí el enlace al correo."; msg.classList.add("err"); f.pass.focus(); return; }
+        sub.disabled = true;
         try {
-          if (f.dataset.f === "email"){
+          if (f.dataset.f === "email" && sub.dataset.how === "pass"){
+            pendingEmail = f.email.value.trim(); msg.textContent = "Entrando…";
+            await signInPass(pendingEmail, f.pass.value);
+            closeModal(); toast("¡Listo! Entraste. Tus proyectos se van a guardar en la nube.");
+          } else if (f.dataset.f === "email"){
             pendingEmail = f.email.value.trim(); msg.textContent = "Mandando…";
             await sendLink(pendingEmail); view = "code"; render();
+          } else if (f.dataset.f === "setpass"){
+            msg.textContent = "Guardando…";
+            await setPassword(f.pass.value);
+            render(); toast("Listo: ya podés entrar con tu correo y esta contraseña en cualquier dispositivo.", 5000);
           } else {
             msg.textContent = "Entrando…";
             await verifyCode(pendingEmail, f.code.value.trim());
