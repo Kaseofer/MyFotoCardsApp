@@ -291,18 +291,39 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
 .edfoot{display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px;position:sticky;bottom:-16px;background:var(--surface);margin:0 -16px -16px;padding:10px 16px 14px}
 .edfoot .sp{flex:1}
 .edfoot .btn{min-width:96px}
+.statusrow{display:flex;align-items:center;gap:6px}
+.undel{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:var(--accent-soft);border-radius:12px;padding:8px 10px;font-weight:600}
+.pitem .pmore{font-weight:800;min-width:40px}
+.pextra{flex-basis:100%;display:flex;gap:6px;justify-content:flex-end}
+.pextra[hidden]{display:none}
+details.backups{margin:0;padding:10px 14px}
 @media (max-width:640px){
   .backtwo{grid-template-columns:minmax(0,1fr)}
-  .backtwo .prevcol{position:static;order:-1}
-  .backprev{max-width:min(230px,58vw)}
-  .proj{gap:6px}
-  .proj input{flex:1 1 100%;width:auto;max-width:none}
+  /* en el teléfono la tarjeta queda fija arriba mientras se eligen diseños */
+  .backtwo .prevcol{position:sticky;top:0;order:-1;z-index:3;background:var(--surface);padding:6px 0 8px;margin:-6px 0 0;border-bottom:1px solid var(--line)}
+  .backprev{max-width:none;width:auto;height:min(30vh,220px)}
+  #backDragHint{display:none}
+  header.top h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .proj{gap:6px;width:100%}
+  .proj input{flex:1 1 120px;width:auto;max-width:none}
+  .statusrow{flex-basis:100%;justify-content:space-between}
   .tabs{width:100%;justify-content:space-between;gap:2px}
-  .tabs button{padding:8px 9px;white-space:nowrap;font-size:.92rem}
+  .tabs button{padding:8px 10px;white-space:nowrap;font-size:.95rem}
   .tabs button .stepn{margin-right:4px;width:18px;height:18px}
   header.top{gap:8px 12px;margin-bottom:10px}
+  .tabrow{margin-bottom:12px}
   #tab-print .sheetwrap{order:-1}
   .edfoot .sp{display:none}
+}
+@media (max-width:380px){
+  .wrap{padding-left:12px;padding-right:12px}
+  .modes a{padding:6px 9px;font-size:.84rem}
+  .tabs button{padding:8px 6px;font-size:.9rem}
+  .tabs button .stepn{width:16px;height:16px;font-size:.7rem;margin-right:3px}
+  #undoAll .lbl{display:none}
+  #undoAll{min-width:44px;font-size:1.1rem}
+  .dock{padding-left:12px;padding-right:12px}
+  .dock .btn{padding:10px 8px}
 }
 @media (max-width:760px){
   #edCanvas{height:min(50vh,460px);width:auto;max-width:100%}
@@ -317,22 +338,22 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
     <div class="topbar"><nav class="modes" aria-label="Modalidad"><a href="./" data-mode="hojas">Hojas de fotos</a><a href="photocards.html" data-mode="cards">Luli's Photocards</a></nav><span id="cloudMount"></span></div>
     <h1>Luli's Photocards</h1>
     <div class="proj">
-      <input id="projName" maxlength="60" aria-label="Nombre de la colección" autocomplete="off">
-      <button class="iconbtn savestate withtext" id="saveState" data-state="saved" title="Todo guardado" aria-label="Todo guardado"></button>
       <button class="iconbtn withtext" id="projectsBtn" title="Mis tarjetas: todas tus colecciones" aria-label="Mis tarjetas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/></svg><span>Mis tarjetas</span></button>
-      <button class="chip" id="classBtn" title="Grupo y álbum de esta colección"></button>
-      <button class="btn small" id="newColBtn">Nueva colección</button>
+      <input id="projName" maxlength="60" aria-label="Nombre de la colección" autocomplete="off">
+      <div class="statusrow">
+        <button class="iconbtn savestate withtext" id="saveState" data-state="saved" title="Todo guardado" aria-label="Todo guardado"></button>
+        <button class="btn small" id="undoAll" disabled title="Deshacer el último cambio (Ctrl+Z)" aria-label="Deshacer">↶<span class="lbl"> Deshacer</span></button>
+      </div>
       <div class="saveinfo warn" id="saveInfo" aria-live="polite" hidden></div>
     </div>
   </header>
 
   <div class="tabrow">
     <div class="tabs" role="tablist">
-      <button role="tab" data-tab="col" aria-selected="true"><span class="stepn" aria-hidden="true">1</span>Tarjetas</button>
-      <button role="tab" data-tab="back" aria-selected="false"><span class="stepn" aria-hidden="true">2</span>Parte de atrás</button>
-      <button role="tab" data-tab="print" aria-selected="false"><span class="stepn" aria-hidden="true">3</span>Imprimir</button>
+      <button role="tab" data-tab="col" aria-selected="true"><span class="stepn" aria-hidden="true">1</span>Mis fotos</button>
+      <button role="tab" data-tab="back" aria-selected="false"><span class="stepn" aria-hidden="true">2</span>Decorar</button>
+      <button role="tab" data-tab="print" aria-selected="false"><span class="stepn" aria-hidden="true">3</span>Terminar</button>
     </div>
-    <button class="btn small" id="undoAll" disabled title="Deshacer el último cambio (Ctrl+Z)">↶ Deshacer</button>
   </div>
 
   <!-- COLECCIÓN -->
@@ -348,6 +369,7 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
         <button class="btn small" id="folderBtn">Abrir una carpeta entera</button>
         <button class="btn small" id="cropBtn">Recortar de un collage</button>
         <button class="btn small" id="selModeBtn">Seleccionar varias</button>
+        <button class="chip" id="classBtn" title="Grupo y álbum de esta colección (opcional)"></button>
         <button class="btn small" id="groupsBtn">Grupos y álbumes</button>
         <button class="btn small" id="toHojasBtn" title="Arma un proyecto de Hojas de fotos con los frentes de estas tarjetas">Usar en Hojas de fotos</button>
       </div>
@@ -362,8 +384,8 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
     <div id="grid" class="grid"></div>
     <div id="emptyCol" class="hero">
       <button class="btn primary big" id="heroAdd">Elegí tus fotos</button>
-      <p>Cada foto se convierte en una tarjeta. Después la acomodás, decorás la parte de atrás y la imprimís.</p>
-      <div class="flow" aria-label="Pasos"><span>1 Elegí fotos</span><span>2 Acomodá tus tarjetas</span><span>3 Decorá la parte de atrás</span><span>4 ¡Listo!</span></div>
+      <p>Cada foto se convierte en una tarjeta. Después, si querés, la decorás. Y al terminar, la imprimís.</p>
+      <div class="flow" aria-label="Pasos"><span>1 Mis fotos</span><span>2 Decorar</span><span>3 Terminar</span></div>
     </div>
   </section>
 
@@ -434,13 +456,14 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
     <div class="two">
       <div>
         <div class="panel">
-          <h2>Hoja</h2>
-          <div class="seg" id="paperSeg"></div>
-        </div>
-        <div class="panel">
-          <h2>Tamaño</h2>
-          <div class="seg" id="sizeSeg"></div>
-          <p class="hint" id="sizeInfo"></p>
+          <h2>Listo para imprimir</h2>
+          <p style="margin:0" id="printSummary"></p>
+          <div class="row" style="margin:10px 0 0"><button class="btn small" id="sizeToggle" aria-expanded="false" aria-controls="sizeBox">Cambiar tamaño</button></div>
+          <div id="sizeBox" hidden>
+            <div class="field" style="margin-top:12px"><label>Hoja</label><div class="seg" id="paperSeg"></div></div>
+            <div class="field"><label>Tamaño de las tarjetas</label><div class="seg" id="sizeSeg"></div></div>
+            <p class="hint" id="sizeInfo"></p>
+          </div>
           <label class="check" style="margin:12px 0 0"><input type="checkbox" id="withBacks"> Imprimir también la parte de atrás (de los dos lados de la hoja)</label>
         </div>
         <details class="adult" id="adultOpts">
@@ -628,9 +651,12 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
 <div class="modal" id="projModal" role="dialog" aria-label="Mis colecciones">
   <div class="mcard">
     <h2>Mis tarjetas <button class="btn small" id="projClose">Cerrar</button></h2>
+    <div class="undel" id="undelBar" hidden><span id="undelText"></span><button class="btn small primary" id="undelBtn">Recuperarla</button></div>
     <div class="plist" id="plist"></div>
     <button class="btn primary" id="newProjBtn">Nueva colección</button>
-    <div class="row" style="margin:0">
+    <details class="adult backups">
+    <summary>Copias de seguridad</summary>
+    <div class="row" style="margin:0 0 8px">
       <button class="btn small" id="exportProjBtn">Descargar copia de esta colección</button>
       <button class="btn small" id="importProjBtn">Abrir una copia</button>
     </div>
@@ -638,7 +664,9 @@ details.adult h3{font-size:1rem;margin:14px 0 6px}
       <button class="btn small" id="exportAllBtn">Copia de todo (las dos modalidades)</button>
       <button class="btn small" id="importAllBtn">Restaurar copia de todo</button>
     </div>
-    <p class="hint" style="margin:0">Se guarda solo a los pocos segundos, en este navegador. La copia en archivo sirve para no perder nada o para pasarlo a otro dispositivo. La «copia de todo» lleva las colecciones, las hojas de fotos y los grupos.</p>
+    <p class="hint" style="margin:0">La copia en archivo sirve para no perder nada o para pasarlo a otro dispositivo. La «copia de todo» lleva las colecciones, las hojas de fotos y los grupos.</p>
+    </details>
+    <p class="hint" style="margin:0">Todo se guarda solo, a los pocos segundos, en este dispositivo.</p>
   </div>
 </div>
 
@@ -1434,6 +1462,9 @@ function renderPrintTab(){
   let info = `Cada tarjeta mide ${String(szi.w).replace(".", ",")} × ${szi.h} mm. Entran ${per} por hoja ${paper().label}.`;
   if (!state.shared){ state.shared = true; const alt = perSheet(); state.shared = false; if (alt > per) info += ` Con cortes compartidos entran ${alt}.`; }
   $("sizeInfo").textContent = info;
+  $("printSummary").textContent = state.cards.length
+    ? `${state.cards.length} ${state.cards.length === 1 ? "tarjeta" : "tarjetas"} de ${String(szi.w).replace(".", ",")} × ${szi.h} mm en hoja ${paper().label}: entran ${per} por hoja.`
+    : `Tarjetas de ${String(szi.w).replace(".", ",")} × ${szi.h} mm en hoja ${paper().label}.`;
   state.page = Math.min(state.page, n-1);
   seg($("sideSeg"), [{id:"front", label:"Frente"}, {id:"back", label:"Parte de atrás"}], () => state.side, v => state.side = v);
   $("sideSeg").style.display = state.withBacks ? "" : "none";
@@ -1443,7 +1474,7 @@ function renderPrintTab(){
   const pages = state.withBacks ? n*2 : n;
   $("pdfInfo").textContent = state.cards.length
     ? `${state.cards.length} tarjetas en ${n} ${n === 1 ? "hoja" : "hojas"}. El PDF tiene ${pages} ${pages === 1 ? "página" : "páginas"}${state.withBacks ? ", alternando frente y dorso" : ""}.`
-    : "Agregá fotos en Colección para ver la hoja.";
+    : "Agregá fotos en «Mis fotos» para ver la hoja.";
   const low = state.cards.filter(c => c.front && dpiOf(c.front) < LOW_DPI).length;
   if (low){ const w = document.createElement("span"); w.className = "lowres"; w.textContent = ` ⚠ ${low} ${low === 1 ? "tarjeta tiene" : "tarjetas tienen"} poca resolución y se ${low === 1 ? "puede" : "pueden"} ver pixelada${low === 1 ? "" : "s"} (marcadas con !).`; $("pdfInfo").appendChild(w); }
   const cv = $("sheet"), dpr = devicePixelRatio || 1, W = Math.round((cv.clientWidth || 360)*dpr), H = Math.round(W*paper().h/paper().w);
@@ -1452,6 +1483,7 @@ function renderPrintTab(){
   renderSheet(cv.getContext("2d"), W/paper().w, state.page, state.side, "ui");
 }
 $("prevBtn").onclick = () => { state.page--; renderPrintTab(); };
+$("sizeToggle").onclick = () => { const on = $("sizeBox").hidden; $("sizeBox").hidden = !on; $("sizeToggle").setAttribute("aria-expanded", on); $("sizeToggle").textContent = on ? "Ocultar tamaños" : "Cambiar tamaño"; };
 $("nextBtn").onclick = () => { state.page++; renderPrintTab(); };
 ["withBacks","bleed","marks","rotBack","shared"].forEach(k => $(k).onchange = e => { state[k] = e.target.checked; renderAll(); });
 
@@ -1644,6 +1676,8 @@ edCv.addEventListener("wheel", e => {
   e.preventDefault();
   ref.zoom = clampZ((ref.zoom || 1) * Math.exp(-e.deltaY * 0.0015)); renderEditor();
 }, {passive:false});
+// Safari del iPhone: que el pellizco sobre la tarjeta no agrande la página entera
+["gesturestart", "gesturechange"].forEach(t => document.addEventListener(t, e => { if (e.target && e.target.closest && e.target.closest("#edCanvas")) e.preventDefault(); }, {passive:false}));
 
 /* ---------- recortar zonas de un collage ---------- */
 const crop = {img:null, url:null, rects:[], sel:-1, lock:true, role:"front", same:true, sameSize:true, undo:[],
@@ -2220,7 +2254,7 @@ let saveState = "";
 function setSaveState(st){
   if (!dbOk) st = "error";
   const el = $("saveState");
-  const short = st === "saved" ? "Guardado en este dispositivo" : st === "dirty" ? "Guardando pronto…" : st === "saving" ? "Guardando…" : "No se pudo guardar";
+  const short = st === "saved" ? "Guardado en este dispositivo" : st === "dirty" ? "Guardando pronto…" : st === "saving" ? "Guardando…" : !dbOk ? "No se puede guardar aquí" : "No se pudo guardar. Reintentar";
   if (saveState !== st){ el.innerHTML = SAVE_ICONS[st] + `<span>${short}</span>`; el.dataset.state = st; saveState = st; }
   const label = st === "saved" ? (lastSavedAt ? `Todo guardado (${hhmm(lastSavedAt)})` : "Todo guardado")
     : st === "dirty" ? "Hay cambios sin guardar: se guardan solos en unos segundos"
@@ -2330,6 +2364,34 @@ async function openProject(id){
   opening = false; clearUndo(); MFC.remember(LS_LAST, proj.id);
   syncInputs(); renderAll(); showSaveInfo(); updateClassChip(); toast(`Abierta: ${proj.name}`);
 }
+/* lo último que se eliminó queda en memoria para poder recuperarlo desde Mis tarjetas */
+let deletedProj = null;
+async function keepDeleted(id){
+  try {
+    const d = await db(), t = d.transaction(["projects","photos"]);
+    const rec = await reqP(t.objectStore("projects").get(id)), list = await reqP(t.objectStore("photos").index("project").getAll(id));
+    deletedProj = rec ? {rec, list} : null;
+  } catch(_){ deletedProj = null; }
+  showUndel();
+}
+function showUndel(){
+  $("undelBar").hidden = !deletedProj;
+  if (deletedProj) $("undelText").textContent = `Eliminaste «${deletedProj.rec.name}».`;
+}
+async function recoverDeleted(){
+  if (!deletedProj) return;
+  // vuelve con un id nuevo, así la nube la toma como una colección nueva y no como la borrada
+  const {rec, list} = deletedProj, pid = newId("p"), map = new Map(list.map(ph => [ph.id, newId("f")]));
+  const fix = r => r && map.has(r.photoId) ? {...r, photoId:map.get(r.photoId)} : (r || null);
+  const d = await db(), t = d.transaction(["projects","photos"], "readwrite");
+  list.forEach(ph => t.objectStore("photos").put({...ph, id:map.get(ph.id), projectId:pid}));
+  t.objectStore("projects").put({...rec, id:pid, updated:Date.now(), cards:(rec.cards || []).map(c => ({...c, front:fix(c.front), back:fix(c.back)})),
+    commonBack:fix(rec.commonBack), logo:fix(rec.logo), logo2:fix(rec.logo2)});
+  await doneP(t);
+  deletedProj = null; showUndel(); renderProjectList();
+  toast("Colección recuperada.");
+}
+$("undelBtn").onclick = recoverDeleted;
 async function deleteProject(id){
   const d = await db(), t = d.transaction(["projects","photos"], "readwrite"), ps = t.objectStore("photos");
   t.objectStore("projects").delete(id);
@@ -2409,12 +2471,17 @@ async function renderProjectList(){
     del.onclick = async () => {
       if (!del.dataset.armed){ del.dataset.armed = "1"; del.textContent = "¿Seguro?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Eliminar"; }, 3000); return; }
       const cur = proj && p.id === proj.id;
+      if (cur) await saveProject(true);
+      await keepDeleted(p.id);
       await deleteProject(p.id);
       if (cur){ proj = null; const rest = await listProjects(); if (rest.length) await openProject(rest[0].id); else await newProject(); }
       renderProjectList();
     };
-    btns.append(open, dup, del);
-    it.append(cv, info, btns); box.appendChild(it);
+    const more = document.createElement("button"); more.className = "pmore"; more.textContent = "⋯"; more.title = "Más acciones"; more.setAttribute("aria-label", `Más acciones para ${p.name}`); more.setAttribute("aria-expanded", "false");
+    const extra = document.createElement("div"); extra.className = "pextra"; extra.hidden = true; extra.append(dup, del);
+    more.onclick = () => { extra.hidden = !extra.hidden; more.setAttribute("aria-expanded", !extra.hidden); };
+    btns.append(open, more);
+    it.append(cv, info, btns, extra); box.appendChild(it);
   });
   await MFC.renderOtherProjects(box, "hojas");
 }
@@ -2534,12 +2601,12 @@ $("groupsClose").onclick = async () => { $("groupsModal").classList.remove("on")
 
 async function updateClassChip(){
   const chip = $("classBtn"); if (!proj) return;
-  let txt = "Sin grupo";
+  let txt = "Elegir grupo y álbum (opcional)";
   try {
     const g = proj.groupId && await getGroup(proj.groupId);
     if (g){ const a = (g.albums || []).find(x => x.id === proj.albumId); txt = a ? `${g.name} · ${a.name}` : g.name; }
   } catch(_){}
-  chip.textContent = txt; chip.classList.toggle("set", txt !== "Sin grupo");
+  chip.textContent = txt; chip.classList.toggle("set", txt !== "Elegir grupo y álbum (opcional)");
 }
 $("classBtn").onclick = () => openNC("edit");
 
@@ -2601,7 +2668,6 @@ $("ncOk").onclick = async () => {
   await saveProject(true);
   toast(ncMode === "new" ? `Colección «${proj.name}» creada.` : "Clasificación guardada.");
 };
-$("newColBtn").onclick = () => openNC("new");
 async function applyGroup(g, a){
   if (g){ state.backText = g.name; if (g.logoId){ const r = await libToRef(g.logoId); if (r) state.logo2 = r; } }
   if (a){ state.backText2 = a.name; if (a.logoId){ const r = await libToRef(a.logoId); if (r) state.logo = r; } }
