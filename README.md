@@ -10,18 +10,55 @@ Publicada en https://kaseofer.github.io/MyFotoCardsApp/. Las fotos no se suben a
 
 ## Tecnología
 
-- HTML, CSS y JavaScript sin frameworks: una página por modalidad y `common.js` con lo compartido.
+- HTML, CSS y JavaScript sin frameworks ni compilación: los archivos se publican tal cual (ver «Cómo está organizado el código»).
 - Canvas 2D para componer y exportar a 300 ppp.
 - IndexedDB para guardar en el navegador: `hojas-fotos-a4` (Hojas de fotos) y `photocards-a4` (photocards y biblioteca de grupos).
-- [Supabase](https://supabase.com) para la cuenta y la nube (`sync.js`; la base está en `supabase/schema.sql`). La librería supabase-js 2.115.0 se baja de jsDelivr solo si se usa la cuenta.
+- [Supabase](https://supabase.com) para la cuenta y la nube (`js/sync.js`; la base está en `supabase/schema.sql`). La librería supabase-js 2.115.0 se baja de jsDelivr solo si se usa la cuenta.
 - [jsPDF 2.5.1](https://github.com/parallax/jsPDF) desde cdnjs para generar el PDF.
 - Fuentes Figtree, Caveat, Bricolage Grotesque y Playfair Display desde Google Fonts.
+
+## Cómo está organizado el código
+
+```
+index.html            Luli's Photocards: solo el HTML de las pantallas y ventanas
+hojas.html            Hojas de fotos (herramienta extra): solo el HTML
+photocards.html       redirección a ./ (enlaces viejos)
+sw.js                 service worker: funciona sin internet y recibe fotos compartidas
+manifest.webmanifest  datos de la app instalable
+css/photocards.css    estilos de Photocards
+css/hojas.css         estilos de Hojas de fotos
+js/common.js          lo compartido por las dos (objeto MFC): bases IndexedDB, lista de proyectos,
+                      copia de todo, ajustes de luz y color, fotos en Safari (packRec/decode)
+js/sync.js            cuenta y nube con Supabase (MFC.cloud)
+js/photocards/        Photocards, en el orden en que se cargan:
+  base.js             medidas, estado (state), fotos en memoria y utilidades ($, toast, newId)
+  dibujo.js           cómo entran en la hoja y cómo se dibuja cada cara (drawFace)
+  coleccion.js        cargar fotos, pestañas, grilla de tarjetas, ordenar arrastrando
+  dorso.js            pestaña Decorar (parte de atrás)
+  imprimir.js         pestaña Terminar y renderAll()
+  editor.js           editor de una tarjeta
+  dialogos.js         teclado en las ventanas (Escape, Tab, foco)
+  collage.js          recortar un collage y quitar un color de fondo
+  descargas.js        PDF, descargar y compartir
+  proyectos.js        guardado automático, Deshacer, abrir/duplicar/eliminar colecciones
+  grupos.js           artistas y álbumes, Nueva colección, Mis tarjetas, copia de una colección
+  pantallas.js        Mis artistas → artista → colección, menús ⋯ y arranque (va último)
+js/hojas/             Hojas de fotos: base, imagenes, hojas, edicion, exportar, proyectos
+supabase/schema.sql   tablas, reglas de acceso y almacenamiento de la nube
+```
+
+Reglas para tocar el código:
+
+- **Son scripts comunes, no módulos:** todos comparten las mismas variables globales (`state`, `photos`, `proj`, `$`…), como si fueran un solo archivo partido en pedazos. Por eso **el orden de los `<script>` importa**: un archivo puede usar funciones de otro dentro de funciones o botones, pero el código que corre apenas se carga solo puede usar lo de archivos anteriores. `pantallas.js` va último porque arranca la app.
+- **Al cambiar un `.js` o `.css`:** subir el número `?v=` en los dos HTML y en la lista `CORE` de `sw.js`, y la `VERSION` de `sw.js`. Así los teléfonos que ya tienen la app bajan la versión nueva.
+- **Cada archivo empieza con un comentario** que dice qué tiene. Dentro, los bloques `/* ---------- tema ---------- */` separan las partes.
+- **Datos:** Photocards guarda en IndexedDB `photocards-a4` (`projects`, `photos`, `groups`, `libphotos`) y Hojas en `hojas-fotos-a4` (`projects`, `photos`). Las fotos de una colección se guardan aparte de la colección y se cargan como miniaturas; la imagen completa solo para editar o imprimir.
 
 ## Instalarla como app
 
 - **Android (Chrome):** abrir el enlace → menú ⋮ → "Instalar app". Mantener apretado el ícono muestra accesos directos a cada modalidad. Desde la galería: Compartir → MyFotoCards y las fotos entran solas en la última modalidad que se usó.
 - **iPhone (Safari):** botón Compartir → "Agregar a inicio". (iPhone no permite recibir fotos compartidas en apps web.)
-- Una vez abierta funciona sin conexión (`sw.js` guarda las dos páginas, `common.js` y jsPDF).
+- Una vez abierta funciona sin conexión (`sw.js` guarda las dos páginas, sus `.js` y `.css` y jsPDF).
 - "Compartir PDF" manda el PDF directo a WhatsApp, mail, Drive, etc. (aparece solo si el navegador lo permite).
 
 ## Lo que comparten las dos modalidades

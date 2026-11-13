@@ -3,10 +3,18 @@
    - La página se pide primero a la red (así siempre llega la última versión) y,
      si no hay conexión, se usa la copia guardada.
    - Recibe las fotos que se comparten desde la galería (Android) y se las pasa a la página. */
-const VERSION = "v15";
+const VERSION = "v16";
 const APP = `app-${VERSION}`, RUNTIME = "runtime", SHARED = "compartidas";
 const CORE = [
-  "./", "./index.html", "./hojas.html", "./photocards.html", "./common.js?v=8", "./sync.js?v=9", "./manifest.webmanifest",
+  "./", "./index.html", "./hojas.html", "./photocards.html", "./manifest.webmanifest",
+  "./js/common.js?v=16", "./js/sync.js?v=16", "./css/photocards.css?v=16",
+  "./js/photocards/base.js?v=16", "./js/photocards/dibujo.js?v=16", "./js/photocards/coleccion.js?v=16",
+  "./js/photocards/dorso.js?v=16", "./js/photocards/imprimir.js?v=16", "./js/photocards/editor.js?v=16",
+  "./js/photocards/dialogos.js?v=16", "./js/photocards/collage.js?v=16", "./js/photocards/descargas.js?v=16",
+  "./js/photocards/proyectos.js?v=16", "./js/photocards/grupos.js?v=16", "./js/photocards/pantallas.js?v=16",
+  "./css/hojas.css?v=16", "./js/hojas/base.js?v=16", "./js/hojas/imagenes.js?v=16",
+  "./js/hojas/hojas.js?v=16", "./js/hojas/edicion.js?v=16", "./js/hojas/exportar.js?v=16",
+  "./js/hojas/proyectos.js?v=16",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png",
 ];
 const JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -31,7 +39,7 @@ self.addEventListener("activate", e => {
 // Cada página se guarda con su propio nombre (sin ?parámetros); "./" es index.html (Photocards)
 function cacheKey(req){
   const u = new URL(req.url); u.hash = "";
-  if (!u.pathname.endsWith(".js")) u.search = ""; // common.js?v=N sí lleva la versión
+  if (!/\.(js|css)$/.test(u.pathname)) u.search = ""; // los .js y .css llevan ?v=N (la versión)
   if (u.pathname.endsWith("/")) u.pathname += "index.html";
   return u.href;
 }
@@ -85,7 +93,7 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET") return;
   if (url.origin === location.origin){
     // páginas, código y manifiesto siempre frescos; íconos y demás desde la copia
-    if (req.mode === "navigate" || /\.(html|js|webmanifest)$/.test(url.pathname)) e.respondWith(networkFirst(req));
+    if (req.mode === "navigate" || /\.(html|js|css|webmanifest)$/.test(url.pathname)) e.respondWith(networkFirst(req));
     else e.respondWith(caches.match(req).then(r => r || fetch(req)));
     return;
   }
